@@ -76,8 +76,8 @@
         .screenshot {
             position: absolute;
             top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            right: 20px;
+            transform: translateY(-50%);
             max-width: 50%;
             max-height: 50%;
         }
@@ -112,21 +112,6 @@
             const selectedVersion = document.getElementById('versionSelect').value;
             window.location.href = selectedVersion;
         }
-
-        let clickCount = 0;
-        const logo = document.getElementById('logo');
-        const milk = document.getElementById('milk');
-
-        logo.addEventListener('click', function() {
-            clickCount++;
-            if (clickCount === 10) {
-                milk.style.display = 'block';
-                setTimeout(function() {
-                    milk.style.display = 'none';
-                    clickCount = 0;
-                }, 15000);
-            }
-        });
     </script>
 </body>
 </html>
