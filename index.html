@@ -22,7 +22,7 @@
         }
 
         .logo {
-            margin: 20px 0 0 20px;
+            margin: 20px 0 0 10px; 
             max-width: 60%;
             align-self: flex-start;
         }
@@ -35,20 +35,28 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            width: 150px; /* Уменьшил ширину контейнера */
+            width: 150px;
         }
 
         select {
             width: 100%;
-            height: 28px; /* Уменьшил высоту */
-            font-size: 14px; /* Уменьшил размер шрифта */
+            height: 28px;
+            font-size: 14px;
+            background-color: #ffc000; 
+            border: none;
+            color: #000;
+            font-weight: bold;
         }
 
         button {
             width: 100%;
-            height: 28px; /* Уменьшил высоту */
-            font-size: 14px; /* Уменьшил размер шрифта */
+            height: 28px;
+            font-size: 14px;
             cursor: pointer;
+            background-color: #ffc000; 
+            border: none;
+            color: #000;
+            font-weight: bold;
         }
 
         .version-info {
@@ -87,7 +95,7 @@
         <button onclick="launchVersion()">LAUNCH</button>
     </div>
 
-    <div class="version-info">Version: <span id="versionText">1.4.25</span></div>
+    <div class="version-info">Version: <span id="versionText">1.5.0</span></div>
 
     <script>
         function launchVersion() {
