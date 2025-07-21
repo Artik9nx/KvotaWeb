@@ -23,46 +23,32 @@
 
         .logo {
             margin: 20px 0 0 20px;
-            max-width: 40%;
+            max-width: 60%;
             align-self: flex-start;
         }
 
         .menu-container {
             position: absolute;
-            left: 50px;
+            left: 20px;
             top: 50%;
             transform: translateY(-50%);
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            width: 200px;
+            gap: 8px;
+            width: 150px; /* Уменьшил ширину контейнера */
         }
 
-        .version-select {
-            padding: 8px;
-            font-size: 16px;
-            font-family: 'Arial Bold', Arial, sans-serif;
-            font-weight: bold;
-            border: 2px solid white;
-            background-color: rgba(0,0,0,0.5);
-            color: white;
+        select {
+            width: 100%;
+            height: 28px; /* Уменьшил высоту */
+            font-size: 14px; /* Уменьшил размер шрифта */
         }
 
-        .launch-button {
-            padding: 8px;
-            font-size: 16px;
-            font-family: 'Arial Bold', Arial, sans-serif;
-            font-weight: bold;
-            background-color: rgba(0,0,0,0.5);
-            color: white;
-            border: 2px solid white;
+        button {
+            width: 100%;
+            height: 28px; /* Уменьшил высоту */
+            font-size: 14px; /* Уменьшил размер шрифта */
             cursor: pointer;
-            text-align: center;
-            transition: all 0.2s;
-        }
-        .launch-button:hover {
-            color: #0000FF;
-            border-color: #0000FF;
         }
 
         .version-info {
@@ -77,18 +63,28 @@
         .version-info span {
             color: #0000FF;
         }
+
+        .screenshot {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            max-width: 40%;
+            max-height: 60%;
+        }
     </style>
 </head>
 <body>
     <img src="logo.png" alt="Logo" class="logo">
+    <img src="screenshot.png" alt="Game Screenshot" class="screenshot">
 
     <div class="menu-container">
-        <select class="version-select" id="versionSelect">
-            <option value="Minecraft4kOLD.html">Minecraft4k-old</option>
-            <option value="Minecraft4k.html">Minecraft4k</option>
+        <select id="versionSelect">
+            <option value="Minecraft4k-0144OLD.html">4K-OLD</option>
+            <option value="Minecraft4k-0144.html">4K-ORIGINAL</option>
             <option value="RD132211.html">RD132211</option>
         </select>
-        <div class="launch-button" onclick="launchVersion()">LAUNCH</div>
+        <button onclick="launchVersion()">LAUNCH</button>
     </div>
 
     <div class="version-info">Version: <span id="versionText">1.4.25</span></div>
@@ -100,4 +96,4 @@
         }
     </script>
 </body>
-</html> 
+</html>
