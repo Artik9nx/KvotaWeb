@@ -25,6 +25,7 @@
             margin: 20px 0 0 10px;
             max-width: 60%;
             align-self: flex-start;
+            cursor: pointer;
         }
 
         .menu-container {
@@ -71,10 +72,28 @@
         .version-info span {
             color: #0000FF;
         }
+
+        .screenshot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 50%;
+            max-height: 50%;
+        }
+
+        .milk {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            max-width: 100px;
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <img src="logo.png" alt="Logo" class="logo">
+    <img src="logo.png" alt="Logo" class="logo" id="logo">
+    <img src="Screenshot.png" alt="Screenshot" class="screenshot">
 
     <div class="menu-container">
         <select id="versionSelect">
@@ -86,12 +105,28 @@
     </div>
 
     <div class="version-info">Version: <span id="versionText">1.4.25</span></div>
+    <img src="Milk.png" alt="Milk" class="milk" id="milk">
 
     <script>
         function launchVersion() {
             const selectedVersion = document.getElementById('versionSelect').value;
             window.location.href = selectedVersion;
         }
+
+        let clickCount = 0;
+        const logo = document.getElementById('logo');
+        const milk = document.getElementById('milk');
+
+        logo.addEventListener('click', function() {
+            clickCount++;
+            if (clickCount === 10) {
+                milk.style.display = 'block';
+                setTimeout(function() {
+                    milk.style.display = 'none';
+                    clickCount = 0;
+                }, 15000);
+            }
+        });
     </script>
 </body>
 </html>
