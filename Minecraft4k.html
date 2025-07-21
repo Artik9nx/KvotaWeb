@@ -19,6 +19,7 @@
         canvas { 
             display: block; 
             margin: 0 auto; 
+            cursor: default;
         }
         #loadingScreen {
             position: absolute;
@@ -336,11 +337,9 @@
                                         }
                                         
                                         let blockColor = colors[tx + ty * 16 + blockType * 256 * 3];
-                                        let isHovered = false;
                                         
                                         if (x === Math.floor(M[2] / 4) && y === Math.floor(M[3] / 4)) {
                                             hoveredBlock = blockIndex;
-                                            isHovered = true;
                                             
                                             if (rayDist < selectDist) {
                                                 selectedBlock = blockIndex;
@@ -349,13 +348,6 @@
                                                 selectedSide = side << 6 * axis;
                                                 selectDist = rayDist;
                                             }
-                                        }
-                                        
-                                        if (isHovered) {
-                                            const r = (blockColor >> 16 & 255) * 1.5;
-                                            const g = (blockColor >> 8 & 255) * 1.5;
-                                            const b = (blockColor & 255) * 1.5;
-                                            blockColor = (Math.min(255, r) << 16) | (Math.min(255, g) << 8) | Math.min(255, b);
                                         }
                                         
                                         if (blockColor > 0) {
