@@ -131,8 +131,8 @@
         const WORLD_DEPTH = 64;
         const BLOCK_SIZE = 1;
         const MAX_BUILD_DISTANCE = 5;
+        const MAX_BUILD_HEIGHT = 64;
         
-        const WORLD_POSITION = { x: 0, y: 0, z: 0 };
         const SPAWN_POINT = { x: 0, y: 3, z: 0 };
         
         let scene, camera, renderer, controls;
@@ -143,7 +143,7 @@
         let stoneTexture, dirtTexture, grassTexture;
         let highlightedBlock = null;
         let highlightStartTime = 0;
-        const HIGHLIGHT_DURATION = 1.0;
+        const HIGHLIGHT_DURATION = 2.0;
 
         let player = {
             position: new THREE.Vector3(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z),
@@ -390,12 +390,16 @@
             highlightedBlock = block;
             highlightStartTime = performance.now();
             
+            const elapsed = (performance.now() - highlightStartTime) / 1000;
+            const pulse = Math.abs(Math.sin(elapsed * Math.PI * 2 / HIGHLIGHT_DURATION));
+            const intensity = 0.5 + pulse * 0.5;
+            
             if (Array.isArray(block.mesh.material)) {
                 block.mesh.material.forEach(mat => {
-                    mat.color.set(0xffffff);
+                    mat.emissive.setHex(0x555555 * intensity);
                 });
             } else {
-                block.mesh.material.color.set(0xffffff);
+                block.mesh.material.emissive.setHex(0x555555 * intensity);
             }
         }
         
@@ -403,11 +407,11 @@
             if (!block) return;
             
             if (Array.isArray(block.mesh.material)) {
-                block.mesh.material.forEach((mat, i) => {
-                    mat.color.copy(block.originalMaterials[i].color);
+                block.mesh.material.forEach(mat => {
+                    mat.emissive.setHex(0x000000);
                 });
             } else {
-                block.mesh.material.color.copy(block.originalMaterials.color);
+                block.mesh.material.emissive.setHex(0x000000);
             }
         }
         
@@ -416,9 +420,9 @@
             
             const elapsed = (performance.now() - highlightStartTime) / 1000;
             if (elapsed >= HIGHLIGHT_DURATION) {
-                resetBlockHighlight(highlightedBlock);
-                highlightedBlock = null;
+                highlightStartTime = performance.now();
             }
+            highlightBlock(highlightedBlock);
         }
         
         function setupControls() {
@@ -445,24 +449,6 @@
             });
         }
         
-        function getRandomSpawnPosition() {
-            const x = Math.floor(Math.random() * WORLD_WIDTH - WORLD_WIDTH/2);
-            const z = Math.floor(Math.random() * WORLD_DEPTH - WORLD_DEPTH/2);
-            return { x, y: 5, z };
-        }
-        
-        function respawnPlayer() {
-            const spawnPoint = getRandomSpawnPosition();
-            player.position.set(spawnPoint.x, spawnPoint.y, spawnPoint.z);
-            player.velocity.set(0, 0, 0);
-            player.canJump = false;
-            
-            if (controls.isLocked) {
-                controls.getObject().position.copy(player.position);
-                controls.getObject().position.y += player.height;
-            }
-        }
-        
         function onKeyDown(event) {
             switch (event.code) {
                 case 'KeyW': player.moveForward = true; break;
@@ -476,7 +462,13 @@
                     }
                     break;
                 case 'KeyR': 
-                    respawnPlayer();
+                    player.position.set(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z);
+                    player.velocity.set(0, 0, 0);
+                    player.canJump = false;
+                    if (controls.isLocked) {
+                        controls.getObject().position.copy(player.position);
+                        controls.getObject().position.y += player.height;
+                    }
                     break;
                 case 'Escape': 
                     if (controls.isLocked) {
@@ -525,7 +517,7 @@
                     
                     const newPos = blockPos.clone().add(normal);
                     
-                    if (Math.abs(newPos.x) > WORLD_WIDTH/2 || Math.abs(newPos.z) > WORLD_DEPTH/2) {
+                    if (Math.abs(newPos.x) > WORLD_WIDTH/2 || Math.abs(newPos.z) > WORLD_DEPTH/2 || newPos.y > MAX_BUILD_HEIGHT) {
                         return;
                     }
                     
