@@ -132,7 +132,6 @@
         const BLOCK_SIZE = 1;
         const MAX_BUILD_DISTANCE = 5;
         const MAX_BUILD_HEIGHT = 64;
-        const HIGHLIGHT_COLOR = 0xffffff;
         
         const SPAWN_POINT = { x: 0, y: 3, z: 0 };
         
@@ -142,7 +141,6 @@
         let raycaster = new THREE.Raycaster();
         let clock = new THREE.Clock();
         let stoneTexture, dirtTexture, grassTexture;
-        let highlightedBlock = null;
 
         let player = {
             position: new THREE.Vector3(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z),
@@ -220,10 +218,10 @@
             
             for (let x = -WORLD_WIDTH/2; x < WORLD_WIDTH/2; x++) {
                 for (let z = -WORLD_DEPTH/2; z < WORLD_DEPTH/2; z++) {
-                    positions.push({x, y: -1, z, type: 'dirt', isPlayerPlaced: false});
+                    positions.push({x, y: -1, z, type: 'dirt'});
                     
                     for (let y = -2; y >= -5; y--) {
-                        positions.push({x, y, z, type: 'stone', isPlayerPlaced: false});
+                        positions.push({x, y, z, type: 'stone'});
                     }
                 }
             }
@@ -285,8 +283,7 @@
                     
                     world[key] = { 
                         mesh: cube, 
-                        type: type,
-                        isPlayerPlaced: block.isPlayerPlaced || false
+                        type: type
                     };
                     
                     const chunkX = Math.floor(block.x / CHUNK_SIZE);
@@ -304,12 +301,7 @@
         function saveWorld() {
             const worldData = {};
             for (const key in world) {
-                if (world[key].isPlayerPlaced) {
-                    worldData[key] = {
-                        type: world[key].type,
-                        isPlayerPlaced: world[key].isPlayerPlaced
-                    };
-                }
+                worldData[key] = world[key].type;
             }
             localStorage.setItem('minecraftWorld', JSON.stringify(worldData));
         }
@@ -322,16 +314,13 @@
                 
                 for (const key in worldData) {
                     const [x, y, z] = key.split(',').map(Number);
-                    blocksToAdd.push({
-                        x, y, z, 
-                        type: worldData[key].type,
-                        isPlayerPlaced: worldData[key].isPlayerPlaced
-                    });
+                    blocksToAdd.push({x, y, z, type: worldData[key]});
                 }
                 
                 addBlocksBatch(blocksToAdd);
+            } else {
+                generateLayeredWorld();
             }
-            generateLayeredWorld();
         }
         
         function updateChunks() {
@@ -381,33 +370,6 @@
                     const block = world[key];
                     scene.add(block.mesh);
                     loadedChunks[chunkKey].push(block.mesh);
-                }
-            }
-        }
-        
-        function highlightBlock(block) {
-            if (highlightedBlock === block) return;
-            
-            if (highlightedBlock) {
-                if (Array.isArray(highlightedBlock.mesh.material)) {
-                    highlightedBlock.mesh.material.forEach(mat => {
-                        mat.emissive.setHex(0x000000);
-                    });
-                } else {
-                    highlightedBlock.mesh.material.emissive.setHex(0x000000);
-                }
-            }
-            
-            highlightedBlock = block;
-            
-            // Highlight only player-placed blocks
-            if (block && block.isPlayerPlaced) {
-                if (Array.isArray(block.mesh.material)) {
-                    block.mesh.material.forEach(mat => {
-                        mat.emissive.setHex(HIGHLIGHT_COLOR);
-                    });
-                } else {
-                    block.mesh.material.emissive.setHex(HIGHLIGHT_COLOR);
                 }
             }
         }
@@ -519,14 +481,14 @@
                     }
                     
                     if (!getBlock(newPos.x, newPos.y, newPos.z)) {
-                        addBlock(newPos.x, newPos.y, newPos.z, blockType, true);
+                        addBlock(newPos.x, newPos.y, newPos.z, blockType);
                         saveWorld();
                     }
                 }
             }
         }
         
-        function addBlock(x, y, z, type, isPlayerPlaced = false) {
+        function addBlock(x, y, z, type) {
             const key = `${x},${y},${z}`;
             if (world[key]) return;
             
@@ -568,8 +530,7 @@
             
             world[key] = { 
                 mesh: cube, 
-                type: type,
-                isPlayerPlaced: isPlayerPlaced
+                type: type
             };
             
             const chunkX = Math.floor(x / CHUNK_SIZE);
@@ -585,9 +546,6 @@
         function removeBlock(x, y, z) {
             const key = `${x},${y},${z}`;
             if (world[key]) {
-                // Don't allow removing generated blocks (only player-placed ones)
-                if (!world[key].isPlayerPlaced) return;
-                
                 scene.remove(world[key].mesh);
                 delete world[key];
                 saveWorld();
@@ -689,37 +647,12 @@
             return false;
         }
         
-        function checkLookingAtBlock() {
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const intersects = raycaster.intersectObjects(Object.values(world).map(b => b.mesh));
-            
-            if (intersects.length > 0) {
-                const intersect = intersects[0];
-                
-                if (intersect.distance > MAX_BUILD_DISTANCE) {
-                    highlightBlock(null);
-                    return;
-                }
-                
-                const blockPos = intersect.object.position.clone();
-                blockPos.x = Math.floor(blockPos.x - BLOCK_SIZE/2);
-                blockPos.y = Math.floor(blockPos.y - BLOCK_SIZE/2);
-                blockPos.z = Math.floor(blockPos.z - BLOCK_SIZE/2);
-                
-                const block = getBlock(blockPos.x, blockPos.y, blockPos.z);
-                highlightBlock(block);
-            } else {
-                highlightBlock(null);
-            }
-        }
-        
         function animate() {
             requestAnimationFrame(animate);
             
             const delta = clock.getDelta();
             
             updatePlayer(delta);
-            checkLookingAtBlock();
             updateChunks();
             
             renderer.render(scene, camera);
