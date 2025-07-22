@@ -86,22 +86,6 @@
             transform: translateY(-50%);
             max-width: 50%;
             max-height: 50%;
-            border: 2px solid #ffc000;
-            border-radius: 4px;
-        }
-
-        .milk {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            max-width: 100px;
-            display: none;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .milk:hover {
-            transform: scale(1.05);
         }
 
         .premium-message {
@@ -138,8 +122,6 @@
     </div>
 
     <div class="version-info">Version: <span id="versionText">0.2.0BugFix</span></div>
-    <img src="Milk.png" alt="Milk" class="milk" id="milk">
-    <div class="premium-message" id="premiumMessage">Mezoik, ты мне должен премiум</div>
 
     <script>
         function launchVersion() {
@@ -152,25 +134,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            const milk = document.getElementById('milk');
-            milk.style.display = 'block';
-            
-            let clickCount = 0;
-            const premiumMessage = document.getElementById('premiumMessage');
-
-            milk.addEventListener('click', function() {
-                clickCount++;
-                
-                if (clickCount >= 10) {
-                    premiumMessage.style.display = 'block';
-                    
-                    setTimeout(function() {
-                        premiumMessage.style.display = 'none';
-                        clickCount = 0;
-                    }, 3000);
-                }
-            });
-
             document.getElementById('versionSelect').addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     launchVersion();
