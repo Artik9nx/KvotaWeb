@@ -142,8 +142,10 @@
         let clock = new THREE.Clock();
         let stoneTexture, dirtTexture, grassTexture;
         let highlightedBlock = null;
-        let highlightStartTime = 0;
-        const HIGHLIGHT_DURATION = 2.0;
+        let lastHighlightTime = 0;
+        let lastChunkUpdate = 0;
+        const CHUNK_UPDATE_INTERVAL = 500;
+        const HIGHLIGHT_COLOR = 0x666666;
 
         let player = {
             position: new THREE.Vector3(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z),
@@ -163,7 +165,7 @@
             setTimeout(() => {
                 document.getElementById('splashScreen').style.display = 'none';
                 initializeGame();
-            }, 4000);
+            }, 2000);
         }
 
         function initializeGame() {
@@ -180,7 +182,7 @@
                 antialias: false,
                 powerPreference: "high-performance"
             });
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(1);
             renderer.setSize(854, 480);
             gameContainer.appendChild(renderer.domElement);
             
@@ -195,6 +197,7 @@
                 const texture = textureLoader.load(url);
                 texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
                 texture.repeat.set(1, 1);
+                texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
                 return texture;
             });
             
@@ -284,14 +287,9 @@
                     
                     scene.add(cube);
                     
-                    const originalMaterials = Array.isArray(material) 
-                        ? material.map(m => m.clone()) 
-                        : material.clone();
-                    
                     world[key] = { 
                         mesh: cube, 
-                        type: type, 
-                        originalMaterials: originalMaterials
+                        type: type
                     };
                     
                     const chunkX = Math.floor(block.x / CHUNK_SIZE);
@@ -332,33 +330,34 @@
         }
         
         function updateChunks() {
+            const now = performance.now();
+            if (now - lastChunkUpdate < CHUNK_UPDATE_INTERVAL) return;
+            lastChunkUpdate = now;
+            
             const playerChunkX = Math.floor(player.position.x / CHUNK_SIZE);
             const playerChunkZ = Math.floor(player.position.z / CHUNK_SIZE);
             
-            for (const chunkKey in loadedChunks) {
-                const [chunkX, chunkZ] = chunkKey.split(',').map(Number);
-                const distance = Math.max(
-                    Math.abs(chunkX - playerChunkX),
-                    Math.abs(chunkZ - playerChunkZ)
-                );
-                
-                if (distance > RENDER_DISTANCE) {
-                    loadedChunks[chunkKey].forEach(block => {
-                        scene.remove(block);
-                    });
-                    delete loadedChunks[chunkKey];
-                }
-            }
+            const chunksToKeep = new Set();
             
             for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
                 for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
                     const chunkX = playerChunkX + x;
-                    const chunkZ = playerChunkX + z;
+                    const chunkZ = playerChunkZ + z;
                     const chunkKey = `${chunkX},${chunkZ}`;
+                    chunksToKeep.add(chunkKey);
                     
                     if (!loadedChunks[chunkKey]) {
                         loadChunk(chunkX, chunkZ);
                     }
+                }
+            }
+            
+            for (const chunkKey in loadedChunks) {
+                if (!chunksToKeep.has(chunkKey)) {
+                    loadedChunks[chunkKey].forEach(block => {
+                        scene.remove(block);
+                    });
+                    delete loadedChunks[chunkKey];
                 }
             }
         }
@@ -383,46 +382,29 @@
         }
         
         function highlightBlock(block) {
-            if (highlightedBlock && highlightedBlock !== block) {
-                resetBlockHighlight(highlightedBlock);
+            if (highlightedBlock === block) return;
+            
+            if (highlightedBlock) {
+                if (Array.isArray(highlightedBlock.mesh.material)) {
+                    highlightedBlock.mesh.material.forEach(mat => {
+                        mat.emissive.setHex(0x000000);
+                    });
+                } else {
+                    highlightedBlock.mesh.material.emissive.setHex(0x000000);
+                }
             }
             
             highlightedBlock = block;
-            highlightStartTime = performance.now();
             
-            const elapsed = (performance.now() - highlightStartTime) / 1000;
-            const pulse = Math.abs(Math.sin(elapsed * Math.PI * 2 / HIGHLIGHT_DURATION));
-            const intensity = 0.5 + pulse * 0.5;
-            
-            if (Array.isArray(block.mesh.material)) {
-                block.mesh.material.forEach(mat => {
-                    mat.emissive.setHex(0x555555 * intensity);
-                });
-            } else {
-                block.mesh.material.emissive.setHex(0x555555 * intensity);
+            if (block) {
+                if (Array.isArray(block.mesh.material)) {
+                    block.mesh.material.forEach(mat => {
+                        mat.emissive.setHex(HIGHLIGHT_COLOR);
+                    });
+                } else {
+                    block.mesh.material.emissive.setHex(HIGHLIGHT_COLOR);
+                }
             }
-        }
-        
-        function resetBlockHighlight(block) {
-            if (!block) return;
-            
-            if (Array.isArray(block.mesh.material)) {
-                block.mesh.material.forEach(mat => {
-                    mat.emissive.setHex(0x000000);
-                });
-            } else {
-                block.mesh.material.emissive.setHex(0x000000);
-            }
-        }
-        
-        function updateHighlight() {
-            if (!highlightedBlock) return;
-            
-            const elapsed = (performance.now() - highlightStartTime) / 1000;
-            if (elapsed >= HIGHLIGHT_DURATION) {
-                highlightStartTime = performance.now();
-            }
-            highlightBlock(highlightedBlock);
         }
         
         function setupControls() {
@@ -579,14 +561,9 @@
             
             scene.add(cube);
             
-            const originalMaterials = Array.isArray(material) 
-                ? material.map(m => m.clone()) 
-                : material.clone();
-            
             world[key] = { 
                 mesh: cube, 
-                type: type, 
-                originalMaterials: originalMaterials
+                type: type
             };
             
             const chunkX = Math.floor(x / CHUNK_SIZE);
@@ -711,10 +688,7 @@
                 const intersect = intersects[0];
                 
                 if (intersect.distance > MAX_BUILD_DISTANCE) {
-                    if (highlightedBlock) {
-                        resetBlockHighlight(highlightedBlock);
-                        highlightedBlock = null;
-                    }
+                    highlightBlock(null);
                     return;
                 }
                 
@@ -726,10 +700,7 @@
                 const block = getBlock(blockPos.x, blockPos.y, blockPos.z);
                 highlightBlock(block);
             } else {
-                if (highlightedBlock) {
-                    resetBlockHighlight(highlightedBlock);
-                    highlightedBlock = null;
-                }
+                highlightBlock(null);
             }
         }
         
@@ -740,7 +711,6 @@
             
             updatePlayer(delta);
             checkLookingAtBlock();
-            updateHighlight();
             updateChunks();
             
             renderer.render(scene, camera);
