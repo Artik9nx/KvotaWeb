@@ -220,10 +220,10 @@
             
             for (let x = -WORLD_WIDTH/2; x < WORLD_WIDTH/2; x++) {
                 for (let z = -WORLD_DEPTH/2; z < WORLD_DEPTH/2; z++) {
-                    positions.push({x, y: -1, z, type: 'dirt'});
+                    positions.push({x, y: -1, z, type: 'dirt', isPlayerPlaced: false});
                     
                     for (let y = -2; y >= -5; y--) {
-                        positions.push({x, y, z, type: 'stone'});
+                        positions.push({x, y, z, type: 'stone', isPlayerPlaced: false});
                     }
                 }
             }
@@ -285,7 +285,8 @@
                     
                     world[key] = { 
                         mesh: cube, 
-                        type: type
+                        type: type,
+                        isPlayerPlaced: block.isPlayerPlaced || false
                     };
                     
                     const chunkX = Math.floor(block.x / CHUNK_SIZE);
@@ -303,7 +304,12 @@
         function saveWorld() {
             const worldData = {};
             for (const key in world) {
-                worldData[key] = world[key].type;
+                if (world[key].isPlayerPlaced) {
+                    worldData[key] = {
+                        type: world[key].type,
+                        isPlayerPlaced: world[key].isPlayerPlaced
+                    };
+                }
             }
             localStorage.setItem('minecraftWorld', JSON.stringify(worldData));
         }
@@ -316,13 +322,16 @@
                 
                 for (const key in worldData) {
                     const [x, y, z] = key.split(',').map(Number);
-                    blocksToAdd.push({x, y, z, type: worldData[key]});
+                    blocksToAdd.push({
+                        x, y, z, 
+                        type: worldData[key].type,
+                        isPlayerPlaced: worldData[key].isPlayerPlaced
+                    });
                 }
                 
                 addBlocksBatch(blocksToAdd);
-            } else {
-                generateLayeredWorld();
             }
+            generateLayeredWorld();
         }
         
         function updateChunks() {
@@ -391,7 +400,8 @@
             
             highlightedBlock = block;
             
-            if (block) {
+            // Highlight only player-placed blocks
+            if (block && block.isPlayerPlaced) {
                 if (Array.isArray(block.mesh.material)) {
                     block.mesh.material.forEach(mat => {
                         mat.emissive.setHex(HIGHLIGHT_COLOR);
@@ -509,14 +519,14 @@
                     }
                     
                     if (!getBlock(newPos.x, newPos.y, newPos.z)) {
-                        addBlock(newPos.x, newPos.y, newPos.z, blockType);
+                        addBlock(newPos.x, newPos.y, newPos.z, blockType, true);
                         saveWorld();
                     }
                 }
             }
         }
         
-        function addBlock(x, y, z, type) {
+        function addBlock(x, y, z, type, isPlayerPlaced = false) {
             const key = `${x},${y},${z}`;
             if (world[key]) return;
             
@@ -558,7 +568,8 @@
             
             world[key] = { 
                 mesh: cube, 
-                type: type
+                type: type,
+                isPlayerPlaced: isPlayerPlaced
             };
             
             const chunkX = Math.floor(x / CHUNK_SIZE);
@@ -574,6 +585,9 @@
         function removeBlock(x, y, z) {
             const key = `${x},${y},${z}`;
             if (world[key]) {
+                // Don't allow removing generated blocks (only player-placed ones)
+                if (!world[key].isPlayerPlaced) return;
+                
                 scene.remove(world[key].mesh);
                 delete world[key];
                 saveWorld();
