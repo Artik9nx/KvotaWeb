@@ -132,6 +132,7 @@
         const BLOCK_SIZE = 1;
         const MAX_BUILD_DISTANCE = 5;
         const MAX_BUILD_HEIGHT = 64;
+        const HIGHLIGHT_COLOR = 0xffffff;
         
         const SPAWN_POINT = { x: 0, y: 3, z: 0 };
         
@@ -142,10 +143,6 @@
         let clock = new THREE.Clock();
         let stoneTexture, dirtTexture, grassTexture;
         let highlightedBlock = null;
-        let lastHighlightTime = 0;
-        let lastChunkUpdate = 0;
-        const CHUNK_UPDATE_INTERVAL = 500;
-        const HIGHLIGHT_COLOR = 0x666666;
 
         let player = {
             position: new THREE.Vector3(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z),
@@ -197,7 +194,6 @@
                 const texture = textureLoader.load(url);
                 texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
                 texture.repeat.set(1, 1);
-                texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
                 return texture;
             });
             
@@ -330,34 +326,33 @@
         }
         
         function updateChunks() {
-            const now = performance.now();
-            if (now - lastChunkUpdate < CHUNK_UPDATE_INTERVAL) return;
-            lastChunkUpdate = now;
-            
             const playerChunkX = Math.floor(player.position.x / CHUNK_SIZE);
             const playerChunkZ = Math.floor(player.position.z / CHUNK_SIZE);
             
-            const chunksToKeep = new Set();
+            for (const chunkKey in loadedChunks) {
+                const [chunkX, chunkZ] = chunkKey.split(',').map(Number);
+                const distance = Math.max(
+                    Math.abs(chunkX - playerChunkX),
+                    Math.abs(chunkZ - playerChunkZ)
+                );
+                
+                if (distance > RENDER_DISTANCE) {
+                    loadedChunks[chunkKey].forEach(block => {
+                        scene.remove(block);
+                    });
+                    delete loadedChunks[chunkKey];
+                }
+            }
             
             for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
                 for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
                     const chunkX = playerChunkX + x;
                     const chunkZ = playerChunkZ + z;
                     const chunkKey = `${chunkX},${chunkZ}`;
-                    chunksToKeep.add(chunkKey);
                     
                     if (!loadedChunks[chunkKey]) {
                         loadChunk(chunkX, chunkZ);
                     }
-                }
-            }
-            
-            for (const chunkKey in loadedChunks) {
-                if (!chunksToKeep.has(chunkKey)) {
-                    loadedChunks[chunkKey].forEach(block => {
-                        scene.remove(block);
-                    });
-                    delete loadedChunks[chunkKey];
                 }
             }
         }
