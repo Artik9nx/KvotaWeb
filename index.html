@@ -88,6 +88,19 @@
             left: 20px;
             max-width: 100px;
             display: none;
+            cursor: pointer;
+        }
+
+        .premium-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: gold;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
         }
     </style>
 </head>
@@ -106,12 +119,36 @@
 
     <div class="version-info">Version: <span id="versionText">1.4.25</span></div>
     <img src="Milk.png" alt="Milk" class="milk" id="milk">
+    <div class="premium-message" id="premiumMessage">Mezoik, ты мне должен премiум</div>
 
     <script>
         function launchVersion() {
             const selectedVersion = document.getElementById('versionSelect').value;
             window.location.href = selectedVersion;
         }
+
+        // Показываем молоко при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            const milk = document.getElementById('milk');
+            milk.style.display = 'block';
+            
+            let clickCount = 0;
+            const premiumMessage = document.getElementById('premiumMessage');
+
+            milk.addEventListener('click', function() {
+                clickCount++;
+                
+                if (clickCount >= 10) {
+                    premiumMessage.style.display = 'block';
+                    
+                    // Скрываем сообщение через 3 секунды
+                    setTimeout(function() {
+                        premiumMessage.style.display = 'none';
+                        clickCount = 0; // Сбрасываем счетчик
+                    }, 3000);
+                }
+            });
+        });
     </script>
 </body>
 </html>
