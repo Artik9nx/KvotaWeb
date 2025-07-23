@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>RD132211 Minecraft</title>
+    <title>RD132211</title>
     <style>
         body { 
             margin: 0; 
@@ -185,9 +185,9 @@
             
             const textureLoader = new THREE.TextureLoader();
             const textures = [
-                'https://i.postimg.cc/Dw9KdZ9N/5382343738950545341.jpg',
-                'https://i.postimg.cc/15wv8rGb/5382343738950545340.jpg',
-                'https://i.postimg.cc/8zYQ0X9K/grass.jpg'
+                'Res/stone.jpg',
+                'Res/dirt.jpg',
+                'Res/grass.jpg'
             ].map(url => {
                 const texture = textureLoader.load(url);
                 texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
