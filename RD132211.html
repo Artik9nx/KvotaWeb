@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>RD132211</title>
+    <title>RD132211 Minecraft</title>
     <style>
         body { 
             margin: 0; 
@@ -184,18 +184,17 @@
             setupLights();
             
             const textureLoader = new THREE.TextureLoader();
-            const textures = [
-                'Res/stone.jpg',
-                'Res/dirt.jpg',
-                'Res/grass.jpg'
-            ].map(url => {
-                const texture = textureLoader.load(url);
-                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-                texture.repeat.set(1, 1);
-                return texture;
-            });
+            stoneTexture = textureLoader.load('Res/stone.jpg');
+            dirtTexture = textureLoader.load('Res/dirt.jpg');
+            grassTexture = textureLoader.load('Res/grass.jpg');
             
-            [stoneTexture, dirtTexture, grassTexture] = textures;
+            stoneTexture.wrapS = stoneTexture.wrapT = THREE.RepeatWrapping;
+            dirtTexture.wrapS = dirtTexture.wrapT = THREE.RepeatWrapping;
+            grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
+            
+            stoneTexture.repeat.set(1, 1);
+            dirtTexture.repeat.set(1, 1);
+            grassTexture.repeat.set(1, 1);
             
             loadWorld();
             setupControls();
