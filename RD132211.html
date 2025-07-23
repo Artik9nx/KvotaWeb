@@ -133,8 +133,6 @@
         const MAX_BUILD_DISTANCE = 5;
         const MAX_BUILD_HEIGHT = 64;
         
-        const SPAWN_POINT = { x: 0, y: 3, z: 0 };
-        
         let scene, camera, renderer, controls;
         let world = {};
         let loadedChunks = {};
@@ -143,7 +141,7 @@
         let stoneTexture, dirtTexture, grassTexture;
 
         let player = {
-            position: new THREE.Vector3(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z),
+            position: new THREE.Vector3(),
             velocity: new THREE.Vector3(),
             moveForward: false,
             moveBackward: false,
@@ -163,13 +161,26 @@
             }, 2000);
         }
 
+        function getRandomSpawnPoint() {
+            const x = Math.floor(Math.random() * WORLD_WIDTH) - WORLD_WIDTH/2;
+            const z = Math.floor(Math.random() * WORLD_DEPTH) - WORLD_DEPTH/2;
+            let y = 0;
+            
+            for (let i = 64; i >= 0; i--) {
+                if (getBlock(x, i, z)) {
+                    y = i + 2;
+                    break;
+                }
+            }
+            
+            return { x, y, z };
+        }
+
         function initializeGame() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x93c4ff);
             
             camera = new THREE.PerspectiveCamera(75, 854/480, 0.1, 1000);
-            camera.position.copy(player.position);
-            camera.position.y += player.height;
             
             const gameContainer = document.getElementById('gameContainer');
             
@@ -192,12 +203,13 @@
             dirtTexture.wrapS = dirtTexture.wrapT = THREE.RepeatWrapping;
             grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
             
-            stoneTexture.repeat.set(1, 1);
-            dirtTexture.repeat.set(1, 1);
-            grassTexture.repeat.set(1, 1);
-            
             loadWorld();
             setupControls();
+            
+            const spawnPoint = getRandomSpawnPoint();
+            player.position.set(spawnPoint.x, spawnPoint.y, spawnPoint.z);
+            camera.position.copy(player.position);
+            camera.position.y += player.height;
             
             setTimeout(() => { controls.lock(); }, 100);
             animate();
@@ -410,7 +422,8 @@
                     }
                     break;
                 case 'KeyR': 
-                    player.position.set(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z);
+                    const spawnPoint = getRandomSpawnPoint();
+                    player.position.set(spawnPoint.x, spawnPoint.y, spawnPoint.z);
                     player.velocity.set(0, 0, 0);
                     player.canJump = false;
                     if (controls.isLocked) {
