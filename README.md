@@ -1,2 +1,11 @@
 # KvotaWeb
-KvotaWeb
+Hey everyone!
+
+I wanted to give a huge shoutout to my friends: SnowSans098, VladNaliv, Uno228, N.Software, and Mezoik!
+
+
+This project is still pretty new, so I'm putting a lot of work into it. I recently rebuilt Minecraft 4k Web, and now it's almost exactly like the original, but instead of a JavaApplet, it's implemented in JavaScript and HTML.
+
+
+I'd really appreciate it if you could tell your friends and acquaintances about my project!
+
