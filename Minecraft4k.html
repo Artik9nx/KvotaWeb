@@ -181,17 +181,11 @@
                     const sinY = Math.sin(rotY), cosY = Math.cos(rotY);
                     
                     if (M[2] > 0) {
-                        const mx = (M[2] - 428) / 214 * 2;
-                        const my = (M[3] - 240) / 120 * 2;
-                        let dist = Math.sqrt(mx * mx + my * my) - 1.2;
-                        if (dist < 0) dist = 0;
+                        const mx = (M[2] - canvas.width/2) / 100;
+                        const my = (M[3] - canvas.height/2) / 100;
                         
-                        if (dist > 0) {
-                            rotX += mx * dist / 400 * deltaTime * 0.1;
-                            rotY -= my * dist / 400 * deltaTime * 0.1;
-                            if (rotY < -maxPitch) rotY = -maxPitch;
-                            if (rotY > maxPitch) rotY = maxPitch;
-                        }
+                        rotX = mx;
+                        rotY = Math.max(-maxPitch, Math.min(maxPitch, -my));
                     }
                     
                     let moveForward = 0, moveStrafe = 0;
@@ -385,8 +379,9 @@
 
                 canvas.addEventListener('mousemove', function(e) {
                     if (!gameStarted) return;
-                    M[2] = e.clientX - canvas.offsetLeft;
-                    M[3] = e.clientY - canvas.offsetTop;
+                    const rect = canvas.getBoundingClientRect();
+                    M[2] = e.clientX - rect.left;
+                    M[3] = e.clientY - rect.top;
                 });
 
                 canvas.addEventListener('mousedown', function(e) {
@@ -396,8 +391,9 @@
                     } else {
                         M[0] = 1;
                     }
-                    M[2] = e.clientX - canvas.offsetLeft;
-                    M[3] = e.clientY - canvas.offsetTop;
+                    const rect = canvas.getBoundingClientRect();
+                    M[2] = e.clientX - rect.left;
+                    M[3] = e.clientY - rect.top;
                 });
 
                 canvas.addEventListener('mouseup', function() {
