@@ -7,7 +7,7 @@
         body { 
             margin: 0; 
             padding: 0; 
-            background-image: url('BackGround.png');
+            background-image: url('res/BackGround.png');
             background-repeat: repeat;
             font-family: Arial, sans-serif; 
             display: flex;
@@ -115,9 +115,9 @@
 <body>
     <div id="gameContainer">
         <div id="splashScreen">
-            <img src="Screen.png" alt="Loading Screen">
+            <img src="res/Screen.png" alt="Loading Screen">
         </div>
-        <img id="logo" src="logo.png" alt="Logo" onclick="window.location.href='index.html'">
+        <img id="logo" src="res/logo.png" alt="Logo" onclick="window.location.href='index.html'">
         <div id="crosshair"></div>
         <div id="exitButton">Exit</div>
     </div>
@@ -195,9 +195,9 @@
             setupLights();
             
             const textureLoader = new THREE.TextureLoader();
-            stoneTexture = textureLoader.load('Res/stone.jpg');
-            dirtTexture = textureLoader.load('Res/dirt.jpg');
-            grassTexture = textureLoader.load('Res/grass.jpg');
+            stoneTexture = textureLoader.load('res/stone.jpg');
+            dirtTexture = textureLoader.load('res/dirt.jpg');
+            grassTexture = textureLoader.load('res/grass.jpg');
             
             stoneTexture.wrapS = stoneTexture.wrapT = THREE.RepeatWrapping;
             dirtTexture.wrapS = dirtTexture.wrapT = THREE.RepeatWrapping;
