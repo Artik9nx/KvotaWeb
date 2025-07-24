@@ -6,6 +6,9 @@ Discord Server : https://discord.gg/2tneAE4J
 Telegram Channel : https://t.me/KvotaWeb
 
 
+![h12mgp8oidpc1](https://github.com/PeytonPlayz595/Alpha-v1.2.6/assets/106421860/324a94c1-468f-4907-9127-64bdf12906c8)
+
+
 # Gratitude
 
 I wanted to give a huge shoutout to my friends: SnowSans098, VladNaliv, Uno228, N.Software, and Mezoik!
