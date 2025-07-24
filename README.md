@@ -1,13 +1,12 @@
 # KvotaWeb
 Hello! I'm a beginner developer creating Minecraft ports. I'm just starting out, so please don't be too critical.
 
+![h12mgp8oidpc1](https://github.com/Artik9nx/KvotaWeb/blob/main/Res/Screenshot.png)
+
+
 # Links
 Discord Server : https://discord.gg/2tneAE4J
 Telegram Channel : https://t.me/KvotaWeb
-
-
-![h12mgp8oidpc1](https://github.com/Artik9nx/KvotaWeb/blob/main/Res/Screenshot.png)
-
 
 # Gratitude
 
