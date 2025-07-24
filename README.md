@@ -5,8 +5,12 @@ Hello! I'm a beginner developer creating Minecraft ports. I'm just starting out,
 
 
 # Links
-Discord Server : https://discord.gg/2tneAE4J
-Telegram Channel : https://t.me/KvotaWeb
+
+### [Discord Server](https://discord.gg/2tneAE4J)
+
+### [Telegram](https://t.me/KvotaWeb)
+
+### [WebSite](https://artik9nx.github.io/KvotaWeb/)
 
 # Gratitude
 
