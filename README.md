@@ -1,12 +1,12 @@
 # KvotaWeb
 Hello! I'm a beginner developer creating Minecraft ports. I'm just starting out, so please don't be too critical.
 
-#Links
+# Links
 Discord Server : https://discord.gg/2tneAE4J
 Telegram Channel : https://t.me/KvotaWeb
 
 
-#Gratitude
+# Gratitude
 
 I wanted to give a huge shoutout to my friends: SnowSans098, VladNaliv, Uno228, N.Software, and Mezoik!
 
