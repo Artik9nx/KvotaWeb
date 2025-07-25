@@ -6,7 +6,16 @@
   body {
     margin: 0;
     overflow: hidden;
-    background-color: black;
+    background-image: url('res/BackGround.png');
+    background-repeat: repeat;
+    background-position: center;
+  }
+  #gameContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
   }
   canvas {
     display: block;
@@ -16,7 +25,9 @@
 </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="640" height="480"></canvas>
+<div id="gameContainer">
+  <canvas id="gameCanvas" width="640" height="480"></canvas>
+</div>
 <script>
 const WINDOW_CLOSING = 201;
 const MOUSE_CLICKED = 502;
@@ -25,12 +36,10 @@ const KEY_RELEASED = 402;
 const MOUSE_PRESSED = 501;
 const MOUSE_MOVED = 503;
 const MOUSE_DRAGGED = 506;
-
 const keys = new Array(65536).fill(false);
 let xMouse = 0;
 let yMouse = 0;
 let mouseButton = 0;
-
 function processEvent(e) {
     switch(e.type) {
         case 'keydown':
@@ -51,7 +60,6 @@ function processEvent(e) {
             break;
     }
 }
-
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -66,7 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const infoStrings = ["Bring the gold home!", "Rocks are impenetrable.", "Use arrow keys to scroll.", "Slime explodes on contact!", "Wide level!", "Timekiller!", "Bonus level!"];
     const slimes = [0, 0, 0, 6, 10, 25, 0];
     let current_level = 0;
-
     function gameLoop() {
         if (keys[27]) {
             console.log("Game exited via ESC.");
@@ -149,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-
         let yo;
         let c;
         for(i = 0; i < level_goldLumps + level_rocks + slimes[current_level]; ++i) {
@@ -188,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-
         const miners = new Array(level_diggers);
         for(let m = 0; m < miners.length; ++m) {
             miners[m] = [
@@ -209,7 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
             miners[m][2] = Math.floor(Math.random() * 2) * 2 - 1;
             miners[m][7] = -640;
         }
-
         x = 0;
         yMo = 0;
         mouseButton = 0;
@@ -220,7 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let levelStarted = false;
         const roundsStartTime = Date.now();
         let lastTime = roundsStartTime;
-
         const levelLoop = () => {
             if (levelOver || keys[27]) {
                 if (score >= level_target && current_level < 6) {
@@ -230,7 +233,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const c_mouse = xMouse + xo;
             const yM_mouse = yMouse + yo;
-
             if (levelStarted && mouseButton > 0) {
                 const dist = Math.floor(Math.sqrt((c_mouse - x) * (c_mouse - x) + (yM_mouse - yMo) * (yM_mouse - yMo))) + 1;
                 for(let step = 0; step < dist; ++step) {
@@ -273,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             x = c_mouse;
             yMo = yM_mouse;
-
             const imgData = ctx.createImageData(640, 480);
             const data = imgData.data;
             for(let i_render = 0; i_render < 480; ++i_render) {
@@ -306,7 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
             tempCanvas.height = 480;
             const tempCtx = tempCanvas.getContext('2d');
             tempCtx.putImageData(imgData, 0, 0);
-
             for(let i_miner = 0; i_miner < miners.length; ++i_miner) {
                 if (miners[i_miner][6] < 16) {
                     for(let dx_miner = -3; dx_miner <= 3; ++dx_miner) {
@@ -343,7 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
-
             while(levelStarted && lastTime < Date.now()) {
                 lastTime += 25;
                 for(let i_slime = 0; i_slime < 400; ++i_slime) {
@@ -573,7 +572,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         requestAnimationFrame(levelLoop);
     };
-
     window.addEventListener('keydown', processEvent);
     window.addEventListener('keyup', processEvent);
     canvas.addEventListener('mousedown', processEvent);
