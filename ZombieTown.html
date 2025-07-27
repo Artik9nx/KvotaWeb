@@ -25,7 +25,6 @@
     <script>
         const WIDTH = 800;
         const HEIGHT = 600;
-        const TITLE = "Zombie Town";
         const WORLD_SIZE = 64.0;
         const WORLD_MIN = -WORLD_SIZE;
         const WORLD_MAX = WORLD_SIZE;
@@ -33,24 +32,17 @@
         const ZOMBIE_BOUNDARY = 12.0;
         const ZOMBIE_MIN = -ZOMBIE_BOUNDARY;
         const ZOMBIE_MAX = ZOMBIE_BOUNDARY;
-        const FOG_BOUNDARY = 40.0;
-        const FOG_MIN = -FOG_BOUNDARY;
-        const FOG_MAX = FOG_BOUNDARY;
 
         let canvas, gl;
         let zombies = [];
         let random = new Random();
         let cameraAngleX = 30.0;
         let cameraAngleY = 0.0;
-        let lastSpawnTime = 0;
         let score = 0;
         let wave = 1;
         let lastWaveTime = 0;
         let zombiesKilled = 0;
         let zombiesNeededForNextWave = 10;
-        let gameStarted = false;
-        let noiseRandom = new Random();
-        let isMouseOverButton = false;
         let textureCache = {};
 
         class Random {
@@ -304,6 +296,9 @@
             ];
             gl.loadMatrixf(new Float32Array(projectionMatrix));
             gl.matrixMode(gl.MODELVIEW);
+
+            spawnInitialZombies();
+            lastWaveTime = Date.now();
         }
 
         function spawnInitialZombies() {
@@ -469,111 +464,11 @@
             return 37;
         }
 
-        function renderMenu() {
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            gl.loadIdentity();
-            gl.matrixMode(gl.PROJECTION);
-            gl.pushMatrix();
-            gl.loadIdentity();
-            gl.ortho(0, WIDTH, HEIGHT, 0, -1, 1);
-            gl.matrixMode(gl.MODELVIEW);
-            gl.pushMatrix();
-            gl.loadIdentity();
-            gl.disable(gl.DEPTH_TEST);
-            gl.disable(gl.FOG);
-            renderNoiseBackground();
-            renderLogo();
-            renderText("PLAY", 350, 310);
-            gl.enable(gl.DEPTH_TEST);
-            gl.enable(gl.FOG);
-            gl.popMatrix();
-            gl.matrixMode(gl.PROJECTION);
-            gl.popMatrix();
-            gl.matrixMode(gl.MODELVIEW);
-        }
-
-        function renderLogo() {
-            gl.enable(gl.TEXTURE_2D);
-            gl.enable(gl.BLEND);
-            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-            gl.bindTexture(gl.TEXTURE_2D, loadTexture("res/ZT/logo.png"));
-            gl.color3f(1.0, 1.0, 1.0);
-            let logoWidth = 232;
-            let logoHeight = 36;
-            let logoX = (WIDTH - logoWidth) / 2;
-            let logoY = 150;
-            gl.begin(gl.QUADS);
-            gl.texCoord2f(0, 0);
-            gl.vertex2f(logoX, logoY);
-            gl.texCoord2f(1, 0);
-            gl.vertex2f(logoX + logoWidth, logoY);
-            gl.texCoord2f(1, 1);
-            gl.vertex2f(logoX + logoWidth, logoY + logoHeight);
-            gl.texCoord2f(0, 1);
-            gl.vertex2f(logoX, logoY + logoHeight);
-            gl.end();
-            gl.disable(gl.BLEND);
-            gl.disable(gl.TEXTURE_2D);
-        }
-
-        function renderNoiseBackground() {
-            gl.color3f(0.0, 0.0, 0.0);
-            gl.begin(gl.QUADS);
-            gl.vertex2f(0, 0);
-            gl.vertex2f(WIDTH, 0);
-            gl.vertex2f(WIDTH, HEIGHT);
-            gl.vertex2f(0, HEIGHT);
-            gl.end();
-            gl.pointSize(2.0);
-            gl.begin(gl.POINTS);
-            for (let i = 0; i < 200; i++) {
-                let x = noiseRandom.nextFloat() * WIDTH;
-                let y = noiseRandom.nextFloat() * HEIGHT;
-                let intensity = 0.2 + noiseRandom.nextFloat() * 0.3;
-                gl.color3f(intensity, intensity, intensity);
-                gl.vertex2f(x, y);
-            }
-            gl.end();
-        }
-
-        function handleMenuInput() {
-            if (Keyboard.isKeyDown(Keyboard.KEY_RETURN) || Keyboard.isKeyDown(Keyboard.KEY_SPACE)) {
-                gameStarted = true;
-                spawnInitialZombies();
-                lastWaveTime = Date.now();
-            }
-            let mouseX = Mouse.getX();
-            let mouseY = HEIGHT - Mouse.getY();
-            isMouseOverButton = mouseX >= 350 && mouseX <= 450 && mouseY >= 300 && mouseY <= 340;
-            if (isMouseOverButton && Mouse.isButtonDown(0)) {
-                gameStarted = true;
-                spawnInitialZombies();
-                lastWaveTime = Date.now();
-            }
-        }
-
         function loop() {
-            if (!gameStarted) {
-                renderMenu();
-                handleMenuInput();
-            } else {
-                update();
-                render();
-            }
+            update();
+            render();
             requestAnimationFrame(loop);
         }
-
-        const Mouse = {
-            isButtonDown: () => false,
-            getX: () => 0,
-            getY: () => 0
-        };
-
-        const Keyboard = {
-            isKeyDown: () => false,
-            KEY_RETURN: 13,
-            KEY_SPACE: 32
-        };
 
         init();
         loop();
