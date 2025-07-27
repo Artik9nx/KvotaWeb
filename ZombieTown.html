@@ -5,8 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zombie Town</title>
     <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #000;
+        }
+        canvas { 
+            display: block; 
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
@@ -40,20 +51,16 @@
         let gameStarted = false;
         let noiseRandom = new Random();
         let isMouseOverButton = false;
-
-        let textures = {};
         let textureCache = {};
 
         class Random {
             constructor(seed) {
                 this.seed = seed || Math.floor(Math.random() * 2147483647);
             }
-
             nextInt(max) {
                 this.seed = (this.seed * 16807) % 2147483647;
                 return this.seed % max;
             }
-
             nextFloat() {
                 return this.nextInt(1000000) / 1000000;
             }
@@ -132,11 +139,7 @@
                 let size = 0.058333334;
                 let yy = -Math.abs(Math.sin(time * 0.6662) * 5.0) - 23.0;
 
-                if (this.isDying) {
-                    gl.color3f(1.0, 0.7, 0.7);
-                } else {
-                    gl.color3f(1.0, 1.0, 1.0);
-                }
+                gl.color3f(this.isDying ? 1.0 : 1.0, this.isDying ? 0.7 : 1.0, this.isDying ? 0.7 : 1.0);
 
                 gl.translatef(this.xo + (this.x - this.xo) * a, this.yo + (this.y - this.yo) * a, this.zo + (this.z - this.zo) * a);
                 gl.scalef(1.0, -1.0, 1.0);
@@ -148,14 +151,10 @@
                 if (this.isDying) {
                     gl.rotatef(this.deathRotX, 1.0, 0.0, 0.0);
                     gl.rotatef(this.deathRotZ, 0.0, 0.0, 1.0);
-                    this.head.yRot = 0.0;
-                    this.head.xRot = 0.0;
-                    this.arm0.xRot = 0.0;
-                    this.arm0.zRot = 0.0;
-                    this.arm1.xRot = 0.0;
-                    this.arm1.zRot = 0.0;
-                    this.leg0.xRot = 0.0;
-                    this.leg1.xRot = 0.0;
+                    this.head.yRot = this.head.xRot = 0.0;
+                    this.arm0.xRot = this.arm0.zRot = 0.0;
+                    this.arm1.xRot = this.arm1.zRot = 0.0;
+                    this.leg0.xRot = this.leg1.xRot = 0.0;
                 } else {
                     this.head.yRot = Math.sin(time * 0.83) * 1.0;
                     this.head.xRot = Math.sin(time) * 0.8;
@@ -183,12 +182,8 @@
             constructor(xTexOffs, yTexOffs) {
                 this.xTexOffs = xTexOffs;
                 this.yTexOffs = yTexOffs;
-                this.x = 0;
-                this.y = 0;
-                this.z = 0;
-                this.xRot = 0;
-                this.yRot = 0;
-                this.zRot = 0;
+                this.x = this.y = this.z = 0;
+                this.xRot = this.yRot = this.zRot = 0;
             }
 
             addBox(x0, y0, z0, w, h, d) {
@@ -227,9 +222,7 @@
                 gl.rotatef(this.yRot * c, 0.0, 1.0, 0.0);
                 gl.rotatef(this.xRot * c, 1.0, 0.0, 0.0);
                 gl.begin(gl.QUADS);
-                for (let i = 0; i < this.polygons.length; i++) {
-                    this.polygons[i].render();
-                }
+                this.polygons.forEach(p => p.render());
                 gl.end();
                 gl.popMatrix();
             }
@@ -262,17 +255,8 @@
                 this.u = u;
                 this.v = v;
             }
-
             remap(u, v) {
                 return new Vertex(this.pos, u, v);
-            }
-        }
-
-        class Vec3 {
-            constructor(x, y, z) {
-                this.x = x;
-                this.y = y;
-                this.z = z;
             }
         }
 
@@ -324,17 +308,13 @@
 
         function spawnInitialZombies() {
             let initialZombies = 64 + random.nextInt(37);
-            for (let i = 0; i < initialZombies; i++) {
-                spawnZombie();
-            }
+            for (let i = 0; i < initialZombies; i++) spawnZombie();
         }
 
         function spawnZombie() {
             let angle = random.nextFloat() * 2 * Math.PI;
             let radius = random.nextFloat() * ZOMBIE_SPAWN_RADIUS;
-            let x = Math.cos(angle) * radius;
-            let z = Math.sin(angle) * radius;
-            let zombie = new Zombie(x, 0, z);
+            let zombie = new Zombie(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
             zombie.rot = random.nextFloat() * Math.PI * 2;
             zombies.push(zombie);
         }
@@ -345,45 +325,25 @@
                 wave++;
                 zombiesNeededForNextWave = 10 + (wave * 5);
                 lastWaveTime = currentTime;
-                let additionalZombies = 5 + (wave * 3);
-                for (let i = 0; i < additionalZombies; i++) {
-                    spawnZombie();
-                }
+                for (let i = 0; i < 5 + (wave * 3); i++) spawnZombie();
             }
 
-            cameraAngleY += 1.0;
-            if (cameraAngleY >= 360.0) cameraAngleY = 0.0;
+            cameraAngleY = (cameraAngleY + 1.0) % 360.0;
 
             for (let i = 0; i < zombies.length; i++) {
                 let zombie = zombies[i];
                 zombie.tick();
-                let baseSpeed = 0.03;
-                let speed = baseSpeed + (wave * 0.005);
-                let moveX = Math.sin(zombie.rot) * speed;
-                let moveZ = Math.cos(zombie.rot) * speed;
-                zombie.x += moveX;
-                zombie.z += moveZ;
+                let speed = 0.03 + (wave * 0.005);
+                zombie.x += Math.sin(zombie.rot) * speed;
+                zombie.z += Math.cos(zombie.rot) * speed;
 
-                if (zombie.x < ZOMBIE_MIN) {
-                    zombie.x = ZOMBIE_MIN;
-                    zombie.rot = Math.random() * Math.PI * 2;
-                }
-                if (zombie.x > ZOMBIE_MAX) {
-                    zombie.x = ZOMBIE_MAX;
-                    zombie.rot = Math.random() * Math.PI * 2;
-                }
-                if (zombie.z < ZOMBIE_MIN) {
-                    zombie.z = ZOMBIE_MIN;
-                    zombie.rot = Math.random() * Math.PI * 2;
-                }
-                if (zombie.z > ZOMBIE_MAX) {
-                    zombie.z = ZOMBIE_MAX;
-                    zombie.rot = Math.random() * Math.PI * 2;
-                }
+                if (zombie.x < ZOMBIE_MIN) zombie.x = ZOMBIE_MIN, zombie.rot = Math.random() * Math.PI * 2;
+                if (zombie.x > ZOMBIE_MAX) zombie.x = ZOMBIE_MAX, zombie.rot = Math.random() * Math.PI * 2;
+                if (zombie.z < ZOMBIE_MIN) zombie.z = ZOMBIE_MIN, zombie.rot = Math.random() * Math.PI * 2;
+                if (zombie.z > ZOMBIE_MAX) zombie.z = ZOMBIE_MAX, zombie.rot = Math.random() * Math.PI * 2;
 
                 if (zombie.isDead()) {
-                    zombies.splice(i, 1);
-                    i--;
+                    zombies.splice(i--, 1);
                     score += 10 * wave;
                     zombiesKilled++;
                     if (zombiesKilled >= zombiesNeededForNextWave) {
@@ -391,10 +351,7 @@
                         zombiesKilled = 0;
                         zombiesNeededForNextWave = 10 + (wave * 5);
                         lastWaveTime = currentTime;
-                        let additionalZombies = 5 + (wave * 3);
-                        for (let j = 0; j < additionalZombies; j++) {
-                            spawnZombie();
-                        }
+                        for (let j = 0; j < 5 + (wave * 3); j++) spawnZombie();
                     }
                 }
             }
@@ -407,9 +364,7 @@
             gl.rotatef(cameraAngleX, 1, 0, 0);
             gl.rotatef(cameraAngleY, 0, 1, 0);
             renderPlatform();
-            for (let zombie of zombies) {
-                zombie.render(1.0);
-            }
+            zombies.forEach(z => z.render(1.0));
             renderGUI();
         }
 
@@ -450,17 +405,13 @@
             gl.matrixMode(gl.MODELVIEW);
             gl.pushMatrix();
             gl.loadIdentity();
-
             gl.disable(gl.DEPTH_TEST);
             gl.disable(gl.FOG);
-
             renderText("Score: " + score, 20, 30);
             renderText("Wave: " + wave, 20, 60);
             renderText("Zombies: " + zombies.length, 20, 90);
-
             gl.enable(gl.DEPTH_TEST);
             gl.enable(gl.FOG);
-
             gl.popMatrix();
             gl.matrixMode(gl.PROJECTION);
             gl.popMatrix();
@@ -503,7 +454,6 @@
                 }
             }
             gl.end();
-
             gl.disable(gl.BLEND);
             gl.disable(gl.TEXTURE_2D);
         }
@@ -517,65 +467,6 @@
             if (c === '/') return 38;
             if (c === '!') return 39;
             return 37;
-        }
-
-        function handleInput() {
-            if (Mouse.isButtonDown(0)) {
-                checkZombieClick();
-            }
-        }
-
-        function checkZombieClick() {
-            let mouseX = Mouse.getX();
-            let mouseY = HEIGHT - Mouse.getY();
-            for (let i = 0; i < zombies.length; i++) {
-                let zombie = zombies[i];
-                let screenPos = worldToScreen(zombie.x, zombie.y, zombie.z);
-                if (!screenPos) continue;
-                let dist = Math.sqrt(Math.pow(screenPos[0] - mouseX, 2) + Math.pow(screenPos[1] - mouseY, 2));
-                if (dist < 50) {
-                    zombie.hit();
-                    break;
-                }
-            }
-        }
-
-        function worldToScreen(x, y, z) {
-            let modelView = new Float32Array(16);
-            let projection = new Float32Array(16);
-            let viewport = new Int32Array(4);
-            gl.getFloatv(gl.MODELVIEW_MATRIX, modelView);
-            gl.getFloatv(gl.PROJECTION_MATRIX, projection);
-            gl.getIntegerv(gl.VIEWPORT, viewport);
-
-            let winX = 0, winY = 0, winZ = 0;
-            let success = gluProject(x, y, z, modelView, projection, viewport, [winX, winY, winZ]);
-            if (success) {
-                return [winX, winY];
-            }
-            return null;
-        }
-
-        function gluProject(x, y, z, modelView, projection, viewport, result) {
-            let point = [x, y, z, 1.0];
-            point = transformPoint(point, modelView);
-            point = transformPoint(point, projection);
-            if (point[3] === 0.0) return false;
-            point[0] /= point[3];
-            point[1] /= point[3];
-            point[2] /= point[3];
-            result[0] = (point[0] * 0.5 + 0.5) * viewport[2] + viewport[0];
-            result[1] = (point[1] * 0.5 + 0.5) * viewport[3] + viewport[1];
-            result[2] = (1.0 + point[2]) * 0.5;
-            return true;
-        }
-
-        function transformPoint(point, matrix) {
-            let x = point[0] * matrix[0] + point[1] * matrix[4] + point[2] * matrix[8] + point[3] * matrix[12];
-            let y = point[0] * matrix[1] + point[1] * matrix[5] + point[2] * matrix[9] + point[3] * matrix[13];
-            let z = point[0] * matrix[2] + point[1] * matrix[6] + point[2] * matrix[10] + point[3] * matrix[14];
-            let w = point[0] * matrix[3] + point[1] * matrix[7] + point[2] * matrix[11] + point[3] * matrix[15];
-            return [x, y, z, w];
         }
 
         function renderMenu() {
@@ -592,11 +483,7 @@
             gl.disable(gl.FOG);
             renderNoiseBackground();
             renderLogo();
-            if (isMouseOverButton) {
-                renderText("PLAY", 350, 310);
-            } else {
-                renderText("PLAY", 350, 310);
-            }
+            renderText("PLAY", 350, 310);
             gl.enable(gl.DEPTH_TEST);
             gl.enable(gl.FOG);
             gl.popMatrix();
@@ -657,15 +544,11 @@
             }
             let mouseX = Mouse.getX();
             let mouseY = HEIGHT - Mouse.getY();
-            if (mouseX >= 350 && mouseX <= 450 && mouseY >= 300 && mouseY <= 340) {
-                isMouseOverButton = true;
-                if (Mouse.isButtonDown(0)) {
-                    gameStarted = true;
-                    spawnInitialZombies();
-                    lastWaveTime = Date.now();
-                }
-            } else {
-                isMouseOverButton = false;
+            isMouseOverButton = mouseX >= 350 && mouseX <= 450 && mouseY >= 300 && mouseY <= 340;
+            if (isMouseOverButton && Mouse.isButtonDown(0)) {
+                gameStarted = true;
+                spawnInitialZombies();
+                lastWaveTime = Date.now();
             }
         }
 
@@ -676,32 +559,22 @@
             } else {
                 update();
                 render();
-                handleInput();
             }
             requestAnimationFrame(loop);
         }
 
         const Mouse = {
-            isButtonDown: (button) => {
-                return false; // TODO: Implement mouse input
-            },
-            getX: () => {
-                return 0; // TODO: Implement mouse input
-            },
-            getY: () => {
-                return 0; // TODO: Implement mouse input
-            }
+            isButtonDown: () => false,
+            getX: () => 0,
+            getY: () => 0
         };
 
         const Keyboard = {
-            isKeyDown: (key) => {
-                return false; // TODO: Implement keyboard input
-            },
+            isKeyDown: () => false,
             KEY_RETURN: 13,
             KEY_SPACE: 32
         };
 
-        // Initialize and start the game
         init();
         loop();
     </script>
