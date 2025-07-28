@@ -2,167 +2,34 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zombie with Texture</title>
+    <title>Zombie Town</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; }
+        body { margin: 0; overflow: hidden; }
         canvas { display: block; }
+        #menuCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let mouse events pass through to the 3D canvas */
+        }
+        #menuCanvas.playable {
+            pointer-events: auto; /* Enable mouse events when menu is active */
+        }
     </style>
 </head>
 <body>
+    <canvas id="gameCanvas"></canvas>
+    <canvas id="menuCanvas"></canvas>
+
+    <!-- Include Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
-        // Эмуляция структуры res/ZT/
-        const res = {
-            ZT: {
-                // Создаем текстуру char.png программно
-                char: (function() {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 64;
-                    canvas.height = 32;
-                    const ctx = canvas.getContext('2d');
-                    
-                    // Заливаем фон прозрачным
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-                    ctx.fillRect(0, 0, 64, 32);
-                    
-                    // Голова (8x8 в левом верхнем углу)
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillRect(0, 0, 8, 8);
-                    
-                    // Тело (8x12)
-                    ctx.fillStyle = '#AAAAAA';
-                    ctx.fillRect(16, 16, 8, 12);
-                    
-                    // Руки (4x12)
-                    ctx.fillStyle = '#888888';
-                    ctx.fillRect(40, 16, 4, 12);
-                    
-                    // Ноги (4x12)
-                    ctx.fillStyle = '#777777';
-                    ctx.fillRect(0, 16, 4, 12);
-                    
-                    const texture = new THREE.Texture(canvas);
-                    texture.needsUpdate = true;
-                    return texture;
-                })()
-            }
-        };
-
-        // Инициализация сцены
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        // Освещение
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(1, 1, 1);
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x404040));
-
-        // Создание материала с нашей текстурой
-        const material = new THREE.MeshStandardMaterial({ 
-            map: res.ZT.char,
-            side: THREE.DoubleSide,
-            transparent: true
-        });
-
-        // Функция для создания части тела с правильными UV
-        function createPart(size, u, v, w, h) {
-            const geometry = new THREE.BoxGeometry(size[0], size[1], size[2]);
-            
-            // Устанавливаем UV-координаты согласно текстуре
-            const uvs = [];
-            const faces = [
-                [u+w, v], [u, v], [u, v+h], [u+w, v+h], // Правая
-                [u, v], [u, v+h], [u+w, v+h], [u+w, v],   // Левая
-                [u+w, v], [u, v], [u, v+h], [u+w, v+h],   // Верх
-                [u, v], [u, v+h], [u+w, v+h], [u+w, v],  // Низ
-                [u, v], [u+w, v], [u+w, v+h], [u, v+h],  // Перед
-                [u+w, v], [u, v], [u, v+h], [u+w, v+h]   // Зад
-            ];
-            
-            faces.forEach(face => {
-                uvs.push(
-                    face[0]/64, 1-face[1]/32,
-                    face[0]/64, 1-(face[1]+face[3])/32,
-                    (face[0]+face[2])/64, 1-(face[1]+face[3])/32,
-                    (face[0]+face[2])/64, 1-face[1]/32
-                );
-            });
-            
-            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-            return new THREE.Mesh(geometry, material);
-        }
-
-        // Создание модели зомби
-        const zombie = new THREE.Group();
-        
-        // Голова (8x8x8)
-        const head = createPart([0.8, 0.8, 0.8], 0, 0, 8, 8);
-        head.position.y = 1.6;
-        zombie.add(head);
-        
-        // Тело (8x12x4)
-        const body = createPart([0.8, 1.2, 0.4], 16, 16, 8, 12);
-        body.position.y = 0.6;
-        zombie.add(body);
-        
-        // Руки (4x12x4)
-        const armL = createPart([0.4, 1.2, 0.4], 40, 16, 4, 12);
-        armL.position.set(-0.6, 0.6, 0);
-        zombie.add(armL);
-        
-        const armR = createPart([0.4, 1.2, 0.4], 40, 16, 4, 12);
-        armR.position.set(0.6, 0.6, 0);
-        zombie.add(armR);
-        
-        // Ноги (4x12x4)
-        const legL = createPart([0.4, 1.2, 0.4], 0, 16, 4, 12);
-        legL.position.set(-0.2, -0.6, 0);
-        zombie.add(legL);
-        
-        const legR = createPart([0.4, 1.2, 0.4], 0, 16, 4, 12);
-        legR.position.set(0.2, -0.6, 0);
-        zombie.add(legR);
-
-        scene.add(zombie);
-        camera.position.z = 5;
-
-        // Анимация (как в оригинале)
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            const time = performance.now() / 1000;
-            
-            // Анимация головы
-            head.rotation.y = Math.sin(time * 0.83) * 1.0;
-            head.rotation.x = Math.sin(time) * 0.8;
-            
-            // Анимация рук
-            armL.rotation.x = Math.sin(time * 0.6662 + Math.PI) * 2.0;
-            armR.rotation.x = Math.sin(time * 0.6662) * 2.0;
-            
-            // Анимация ног
-            legL.rotation.x = Math.sin(time * 0.6662) * 1.4;
-            legR.rotation.x = Math.sin(time * 0.6662 + Math.PI) * 1.4;
-            
-            // Общее движение
-            zombie.position.y = -Math.abs(Math.sin(time * 0.6662) * 5.0) / 10 - 2.3;
-            zombie.rotation.y += 0.01;
-
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+    
+    <!-- Include your game scripts -->
+    <script src="js/Textures.js"></script>
+    <script src="js/GUIScreen.js"></script>
+    <script src="js/Zombie.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
