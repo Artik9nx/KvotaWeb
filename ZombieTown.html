@@ -3,239 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zombie Town</title>
+    <title>Zombie with Original Texture</title>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: #000;
-        }
-        canvas { 
-            display: block; 
-            margin: 0 auto;
-            background: #000;
-        }
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // Game constants
-        const WIDTH = 800;
-        const HEIGHT = 600;
-        const WORLD_SIZE = 64.0;
-        const ZOMBIE_SPAWN_RADIUS = 6.0;
-        const ZOMBIE_BOUNDARY = 12.0;
+        // 1. Инициализация сцены
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-        // Game variables
-        let canvas, gl;
-        let zombies = [];
-        let cameraAngleX = 30.0;
-        let cameraAngleY = 0.0;
-        let score = 0;
-        let wave = 1;
-        let lastWaveTime = Date.now();
-        let zombiesKilled = 0;
-        let zombiesNeededForNextWave = 10;
-
-        // Initialize WebGL
-        function init() {
-            canvas = document.getElementById('gameCanvas');
-            canvas.width = WIDTH;
-            canvas.height = HEIGHT;
+        // 2. Создание текстуры char.png программно (как в оригинале)
+        function createCharTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
             
-            try {
-                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (!gl) {
-                    alert('WebGL not supported in your browser!');
-                    return;
-                }
-            } catch (e) {
-                alert('Error initializing WebGL: ' + e);
-                return;
-            }
-
-            // Basic WebGL setup
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
-            gl.enable(gl.DEPTH_TEST);
-            gl.viewport(0, 0, canvas.width, canvas.height);
-
-            // Set up projection matrix
-            const fieldOfView = 45 * Math.PI / 180;
-            const aspect = canvas.width / canvas.height;
-            const zNear = 0.1;
-            const zFar = 100.0;
-            const projectionMatrix = mat4.create();
-            mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
-
-            // Set up model-view matrix
-            const modelViewMatrix = mat4.create();
-            mat4.translate(modelViewMatrix, modelViewMatrix, [0.0, 0.0, -15.0]);
-
-            // Start the game
-            spawnInitialZombies();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Game objects
-        class Zombie {
-            constructor(x, y, z) {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-                this.rotation = 0;
-                this.speed = 0.03;
-                this.isDying = false;
-                this.deathTimer = 0;
-            }
-
-            update() {
-                if (this.isDying) {
-                    this.deathTimer += 0.1;
-                    this.y -= 0.1;
-                    return;
-                }
-
-                this.rotation += 0.01;
-                this.x += Math.sin(this.rotation) * this.speed;
-                this.z += Math.cos(this.rotation) * this.speed;
-
-                // Boundary check
-                if (this.x < -ZOMBIE_BOUNDARY || this.x > ZOMBIE_BOUNDARY ||
-                    this.z < -ZOMBIE_BOUNDARY || this.z > ZOMBIE_BOUNDARY) {
-                    this.rotation = Math.random() * Math.PI * 2;
-                }
-            }
-
-            render() {
-                const modelViewMatrix = mat4.create();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [this.x, this.y, this.z]);
-                mat4.rotate(modelViewMatrix, modelViewMatrix, this.rotation, [0, 1, 0]);
-
-                if (this.isDying) {
-                    mat4.rotate(modelViewMatrix, modelViewMatrix, this.deathTimer, [1, 0, 1]);
-                }
-
-                // Simple cube rendering
-                gl.uniformMatrix4fv(uModelViewMatrix, false, modelViewMatrix);
-                gl.drawArrays(gl.TRIANGLES, 0, 36);
-            }
-
-            hit() {
-                if (!this.isDying) {
-                    this.isDying = true;
-                    score += 10 * wave;
-                    zombiesKilled++;
-                }
-            }
-
-            isDead() {
-                return this.isDying && this.deathTimer > 3.0;
-            }
-        }
-
-        // Game functions
-        function spawnInitialZombies() {
-            for (let i = 0; i < 10; i++) {
-                spawnZombie();
-            }
-        }
-
-        function spawnZombie() {
-            const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * ZOMBIE_SPAWN_RADIUS;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-            zombies.push(new Zombie(x, 0, z));
-        }
-
-        function update() {
-            const currentTime = Date.now();
+            // Заливаем фон (как в оригинале)
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 64, 32);
             
-            // Wave system
-            if (currentTime - lastWaveTime > 30000) {
-                wave++;
-                zombiesNeededForNextWave = 10 + wave * 5;
-                lastWaveTime = currentTime;
-                for (let i = 0; i < 5 + wave * 3; i++) {
-                    spawnZombie();
-                }
-            }
-
-            // Update zombies
-            for (let i = zombies.length - 1; i >= 0; i--) {
-                zombies[i].update();
-                if (zombies[i].isDead()) {
-                    zombies.splice(i, 1);
-                }
-            }
-
-            // Check for next wave
-            if (zombiesKilled >= zombiesNeededForNextWave) {
-                wave++;
-                zombiesKilled = 0;
-                zombiesNeededForNextWave = 10 + wave * 5;
-                lastWaveTime = currentTime;
-                for (let i = 0; i < 5 + wave * 3; i++) {
-                    spawnZombie();
-                }
-            }
-
-            // Update camera
-            cameraAngleY = (cameraAngleY + 0.5) % 360;
+            // Рисуем текстуру головы (8x8 в левом верхнем углу)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 8, 8); // Лицо
+            
+            // Тело (16x16)
+            ctx.fillStyle = '#AAAAAA';
+            ctx.fillRect(16, 16, 8, 12);
+            
+            // Руки (40x16)
+            ctx.fillStyle = '#888888';
+            ctx.fillRect(40, 16, 4, 12);
+            
+            // Ноги (0x16)
+            ctx.fillStyle = '#777777';
+            ctx.fillRect(0, 16, 4, 12);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            return texture;
         }
 
-        function render() {
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        const charTexture = createCharTexture();
+        const material = new THREE.MeshBasicMaterial({ 
+            map: charTexture,
+            transparent: true,
+            alphaTest: 0.5
+        });
 
-            // Set up view matrix
-            const viewMatrix = mat4.create();
-            mat4.translate(viewMatrix, viewMatrix, [0.0, 0.0, -15.0]);
-            mat4.rotate(viewMatrix, viewMatrix, cameraAngleX * Math.PI / 180, [1, 0, 0]);
-            mat4.rotate(viewMatrix, viewMatrix, cameraAngleY * Math.PI / 180, [0, 1, 0]);
-
-            // Render zombies
-            zombies.forEach(zombie => zombie.render());
-
-            // Render platform
-            renderPlatform();
-
-            // Render UI
-            renderUI();
+        // 3. Создание модели зомби с точными UV-координатами
+        function createZombieModel() {
+            const group = new THREE.Group();
+            
+            // Голова (8x8x8)
+            const headGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+            setUVs(headGeometry, 0, 0, 8/64, 8/32); // Текстурные координаты как в оригинале
+            const head = new THREE.Mesh(headGeometry, material);
+            head.position.y = 1.6;
+            group.add(head);
+            
+            // Тело (8x12x4)
+            const bodyGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.4);
+            setUVs(bodyGeometry, 16/64, 16/32, 8/64, 12/32);
+            const body = new THREE.Mesh(bodyGeometry, material);
+            body.position.y = 0.6;
+            group.add(body);
+            
+            // Левая рука (4x12x4)
+            const armLGeometry = new THREE.BoxGeometry(0.4, 1.2, 0.4);
+            setUVs(armLGeometry, 40/64, 16/32, 4/64, 12/32);
+            const armL = new THREE.Mesh(armLGeometry, material);
+            armL.position.set(-0.6, 0.6, 0);
+            group.add(armL);
+            
+            // Правая рука (зеркально)
+            const armRGeometry = new THREE.BoxGeometry(0.4, 1.2, 0.4);
+            setUVs(armRGeometry, 40/64, 16/32, 4/64, 12/32);
+            const armR = new THREE.Mesh(armRGeometry, material);
+            armR.position.set(0.6, 0.6, 0);
+            group.add(armR);
+            
+            // Ноги (4x12x4)
+            const legLGeometry = new THREE.BoxGeometry(0.4, 1.2, 0.4);
+            setUVs(legLGeometry, 0/64, 16/32, 4/64, 12/32);
+            const legL = new THREE.Mesh(legLGeometry, material);
+            legL.position.set(-0.2, -0.6, 0);
+            group.add(legL);
+            
+            const legRGeometry = new THREE.BoxGeometry(0.4, 1.2, 0.4);
+            setUVs(legRGeometry, 0/64, 16/32, 4/64, 12/32);
+            const legR = new THREE.Mesh(legRGeometry, material);
+            legR.position.set(0.2, -0.6, 0);
+            group.add(legR);
+            
+            return group;
         }
 
-        function renderPlatform() {
-            const modelMatrix = mat4.create();
-            mat4.translate(modelMatrix, modelMatrix, [0, -1, 0]);
-            mat4.scale(modelMatrix, modelMatrix, [WORLD_SIZE, 0.1, WORLD_SIZE]);
-            gl.uniformMatrix4fv(uModelViewMatrix, false, modelMatrix);
-            gl.drawArrays(gl.TRIANGLES, 0, 36);
+        // Функция для установки UV-координат (как в оригинале)
+        function setUVs(geometry, u, v, w, h) {
+            const uv = [
+                [u+w, v], [u, v], [u, v+h], [u+w, v+h], // Правая грань
+                [u, v], [u, v+h], [u+w, v+h], [u+w, v],   // Левая грань
+                [u+w, v], [u, v], [u, v+h], [u+w, v+h],   // Верхняя грань
+                [u, v], [u, v+h], [u+w, v+h], [u+w, v],  // Нижняя грань
+                [u, v], [u+w, v], [u+w, v+h], [u, v+h],  // Передняя грань
+                [u+w, v], [u, v], [u, v+h], [u+w, v+h]   // Задняя грань
+            ].flat();
+            
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
         }
 
-        function renderUI() {
-            // Simple text rendering would go here
-            // For now we'll just log the stats
-            console.log(`Score: ${score} | Wave: ${wave} | Zombies: ${zombies.length}`);
+        const zombie = createZombieModel();
+        scene.add(zombie);
+
+        // 4. Анимация (точное воспроизведение оригинальной)
+        const ANIM_SPEED = 0.6662;
+        const timeOffset = Math.random() * 1000;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = (performance.now() + timeOffset) / 1000 * 10 * ANIM_SPEED;
+            const head = zombie.children[0];
+            const body = zombie.children[1];
+            const armL = zombie.children[2];
+            const armR = zombie.children[3];
+            const legL = zombie.children[4];
+            const legR = zombie.children[5];
+            
+            // Анимация головы
+            head.rotation.y = Math.sin(time * 0.83) * 1.0;
+            head.rotation.x = Math.sin(time) * 0.8;
+            
+            // Анимация рук
+            armL.rotation.x = Math.sin(time * ANIM_SPEED + Math.PI) * 2.0;
+            armL.rotation.z = (Math.sin(time * 0.2312) + 1.0) * 1.0;
+            
+            armR.rotation.x = Math.sin(time * ANIM_SPEED) * 2.0;
+            armR.rotation.z = (Math.sin(time * 0.2812) - 1.0) * 1.0;
+            
+            // Анимация ног
+            legL.rotation.x = Math.sin(time * ANIM_SPEED) * 1.4;
+            legR.rotation.x = Math.sin(time * ANIM_SPEED + Math.PI) * 1.4;
+            
+            // Движение вверх-вниз
+            const yy = -Math.abs(Math.sin(time * ANIM_SPEED) * 5.0) / 10 - 2.3;
+            zombie.position.y = yy;
+            
+            // Вращение
+            zombie.rotation.y += 0.01;
+
+            renderer.render(scene, camera);
         }
 
-        function gameLoop() {
-            update();
-            render();
-            requestAnimationFrame(gameLoop);
-        }
+        // 5. Настройка камеры
+        camera.position.z = 5;
+        animate();
 
-        // Initialize the game when the page loads
-        window.onload = function() {
-            // Load gl-matrix library dynamically
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js';
-            script.onload = init;
-            document.head.appendChild(script);
-        };
+        // Реакция на изменение размера
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
