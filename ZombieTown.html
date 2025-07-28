@@ -17,461 +17,225 @@
         canvas { 
             display: block; 
             margin: 0 auto;
+            background: #000;
         }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
     <script>
+        // Game constants
         const WIDTH = 800;
         const HEIGHT = 600;
         const WORLD_SIZE = 64.0;
-        const WORLD_MIN = -WORLD_SIZE;
-        const WORLD_MAX = WORLD_SIZE;
         const ZOMBIE_SPAWN_RADIUS = 6.0;
         const ZOMBIE_BOUNDARY = 12.0;
-        const ZOMBIE_MIN = -ZOMBIE_BOUNDARY;
-        const ZOMBIE_MAX = ZOMBIE_BOUNDARY;
 
+        // Game variables
         let canvas, gl;
         let zombies = [];
-        let random = new Random();
         let cameraAngleX = 30.0;
         let cameraAngleY = 0.0;
         let score = 0;
         let wave = 1;
-        let lastWaveTime = 0;
+        let lastWaveTime = Date.now();
         let zombiesKilled = 0;
         let zombiesNeededForNextWave = 10;
-        let textureCache = {};
 
-        class Random {
-            constructor(seed) {
-                this.seed = seed || Math.floor(Math.random() * 2147483647);
+        // Initialize WebGL
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            canvas.width = WIDTH;
+            canvas.height = HEIGHT;
+            
+            try {
+                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) {
+                    alert('WebGL not supported in your browser!');
+                    return;
+                }
+            } catch (e) {
+                alert('Error initializing WebGL: ' + e);
+                return;
             }
-            nextInt(max) {
-                this.seed = (this.seed * 16807) % 2147483647;
-                return this.seed % max;
-            }
-            nextFloat() {
-                return this.nextInt(1000000) / 1000000;
-            }
+
+            // Basic WebGL setup
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.enable(gl.DEPTH_TEST);
+            gl.viewport(0, 0, canvas.width, canvas.height);
+
+            // Set up projection matrix
+            const fieldOfView = 45 * Math.PI / 180;
+            const aspect = canvas.width / canvas.height;
+            const zNear = 0.1;
+            const zFar = 100.0;
+            const projectionMatrix = mat4.create();
+            mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+
+            // Set up model-view matrix
+            const modelViewMatrix = mat4.create();
+            mat4.translate(modelViewMatrix, modelViewMatrix, [0.0, 0.0, -15.0]);
+
+            // Start the game
+            spawnInitialZombies();
+            requestAnimationFrame(gameLoop);
         }
 
+        // Game objects
         class Zombie {
             constructor(x, y, z) {
-                this.timeOffs = Math.random() * 1239813.0;
-                this.rot = Math.random() * Math.PI * 2;
-                this.speed = 1.0;
                 this.x = x;
                 this.y = y;
                 this.z = z;
-                this.xo = x;
-                this.yo = y;
-                this.zo = z;
+                this.rotation = 0;
+                this.speed = 0.03;
                 this.isDying = false;
-                this.deathTimer = 0.0;
-                this.fallSpeed = 0.0;
-                this.deathRotX = 0.0;
-                this.deathRotZ = 0.0;
-                this.deathRotSpeedX = 0.0;
-                this.deathRotSpeedZ = 0.0;
-
-                this.head = new Cube(0, 0);
-                this.head.addBox(-4.0, -8.0, -4.0, 8, 8, 8);
-                this.body = new Cube(16, 16);
-                this.body.addBox(-4.0, 0.0, -2.0, 8, 12, 4);
-                this.arm0 = new Cube(40, 16);
-                this.arm0.addBox(-3.0, -2.0, -2.0, 4, 12, 4);
-                this.arm0.setPos(-5.0, 2.0, 0.0);
-                this.arm1 = new Cube(40, 16);
-                this.arm1.addBox(-1.0, -2.0, -2.0, 4, 12, 4);
-                this.arm1.setPos(5.0, 2.0, 0.0);
-                this.leg0 = new Cube(0, 16);
-                this.leg0.addBox(-2.0, 0.0, -2.0, 4, 12, 4);
-                this.leg0.setPos(-2.0, 12.0, 0.0);
-                this.leg1 = new Cube(0, 16);
-                this.leg1.addBox(-2.0, 0.0, -2.0, 4, 12, 4);
-                this.leg1.setPos(2.0, 12.0, 0.0);
+                this.deathTimer = 0;
             }
 
-            tick() {
-                this.rot += this.rotA;
-                this.rotA *= 0.99;
-                this.rotA += (Math.random() - Math.random()) * Math.random() * Math.random() * 0.01;
+            update() {
+                if (this.isDying) {
+                    this.deathTimer += 0.1;
+                    this.y -= 0.1;
+                    return;
+                }
+
+                this.rotation += 0.01;
+                this.x += Math.sin(this.rotation) * this.speed;
+                this.z += Math.cos(this.rotation) * this.speed;
+
+                // Boundary check
+                if (this.x < -ZOMBIE_BOUNDARY || this.x > ZOMBIE_BOUNDARY ||
+                    this.z < -ZOMBIE_BOUNDARY || this.z > ZOMBIE_BOUNDARY) {
+                    this.rotation = Math.random() * Math.PI * 2;
+                }
+            }
+
+            render() {
+                const modelViewMatrix = mat4.create();
+                mat4.translate(modelViewMatrix, modelViewMatrix, [this.x, this.y, this.z]);
+                mat4.rotate(modelViewMatrix, modelViewMatrix, this.rotation, [0, 1, 0]);
 
                 if (this.isDying) {
-                    this.fallSpeed += 0.1;
-                    this.y -= this.fallSpeed;
-                    this.deathTimer += 0.1;
-                    this.deathRotX += this.deathRotSpeedX;
-                    this.deathRotZ += this.deathRotSpeedZ;
+                    mat4.rotate(modelViewMatrix, modelViewMatrix, this.deathTimer, [1, 0, 1]);
                 }
+
+                // Simple cube rendering
+                gl.uniformMatrix4fv(uModelViewMatrix, false, modelViewMatrix);
+                gl.drawArrays(gl.TRIANGLES, 0, 36);
             }
 
             hit() {
                 if (!this.isDying) {
                     this.isDying = true;
-                    this.deathTimer = 0.0;
-                    this.fallSpeed = 0.0;
-                    this.deathRotSpeedX = (Math.random() - 0.5) * 10.0;
-                    this.deathRotSpeedZ = (Math.random() - 0.5) * 10.0;
+                    score += 10 * wave;
+                    zombiesKilled++;
                 }
             }
 
             isDead() {
-                return this.isDying && this.deathTimer >= 3.0;
-            }
-
-            render(a) {
-                gl.enable(gl.TEXTURE_2D);
-                gl.bindTexture(gl.TEXTURE_2D, loadTexture("res/ZT/char.png"));
-                gl.pushMatrix();
-                let time = performance.now() / 1000 * 10 * this.speed + this.timeOffs;
-                let size = 0.058333334;
-                let yy = -Math.abs(Math.sin(time * 0.6662) * 5.0) - 23.0;
-
-                gl.color3f(this.isDying ? 1.0 : 1.0, this.isDying ? 0.7 : 1.0, this.isDying ? 0.7 : 1.0);
-
-                gl.translatef(this.xo + (this.x - this.xo) * a, this.yo + (this.y - this.yo) * a, this.zo + (this.z - this.zo) * a);
-                gl.scalef(1.0, -1.0, 1.0);
-                gl.scalef(size, size, size);
-                gl.translatef(0.0, yy, 0.0);
-                let c = 57.29578;
-                gl.rotatef(this.rot * c + 180.0, 0.0, 1.0, 0.0);
-
-                if (this.isDying) {
-                    gl.rotatef(this.deathRotX, 1.0, 0.0, 0.0);
-                    gl.rotatef(this.deathRotZ, 0.0, 0.0, 1.0);
-                    this.head.yRot = this.head.xRot = 0.0;
-                    this.arm0.xRot = this.arm0.zRot = 0.0;
-                    this.arm1.xRot = this.arm1.zRot = 0.0;
-                    this.leg0.xRot = this.leg1.xRot = 0.0;
-                } else {
-                    this.head.yRot = Math.sin(time * 0.83) * 1.0;
-                    this.head.xRot = Math.sin(time) * 0.8;
-                    this.arm0.xRot = Math.sin(time * 0.6662 + Math.PI) * 2.0;
-                    this.arm0.zRot = (Math.sin(time * 0.2312) + 1.0) * 1.0;
-                    this.arm1.xRot = Math.sin(time * 0.6662) * 2.0;
-                    this.arm1.zRot = (Math.sin(time * 0.2812) - 1.0) * 1.0;
-                    this.leg0.xRot = Math.sin(time * 0.6662) * 1.4;
-                    this.leg1.xRot = Math.sin(time * 0.6662 + Math.PI) * 1.4;
-                }
-
-                this.head.render();
-                this.body.render();
-                this.arm0.render();
-                this.arm1.render();
-                this.leg0.render();
-                this.leg1.render();
-                gl.popMatrix();
-                gl.disable(gl.TEXTURE_2D);
-                gl.color3f(1.0, 1.0, 1.0);
+                return this.isDying && this.deathTimer > 3.0;
             }
         }
 
-        class Cube {
-            constructor(xTexOffs, yTexOffs) {
-                this.xTexOffs = xTexOffs;
-                this.yTexOffs = yTexOffs;
-                this.x = this.y = this.z = 0;
-                this.xRot = this.yRot = this.zRot = 0;
-            }
-
-            addBox(x0, y0, z0, w, h, d) {
-                this.vertices = [
-                    new Vertex(x0, y0, z0, 0.0, 0.0),
-                    new Vertex(x0 + w, y0, z0, 0.0, 8.0),
-                    new Vertex(x0 + w, y0 + h, z0, 8.0, 8.0),
-                    new Vertex(x0, y0 + h, z0, 8.0, 0.0),
-                    new Vertex(x0, y0, z0 + d, 0.0, 0.0),
-                    new Vertex(x0 + w, y0, z0 + d, 0.0, 8.0),
-                    new Vertex(x0 + w, y0 + h, z0 + d, 8.0, 8.0),
-                    new Vertex(x0, y0 + h, z0 + d, 8.0, 0.0)
-                ];
-
-                this.polygons = [
-                    new Polygon([this.vertices[5], this.vertices[1], this.vertices[2], this.vertices[6]], this.xTexOffs + d + w, this.yTexOffs + d, this.xTexOffs + d + w + d, this.yTexOffs + d + h),
-                    new Polygon([this.vertices[0], this.vertices[4], this.vertices[7], this.vertices[3]], this.xTexOffs, this.yTexOffs + d, this.xTexOffs + d, this.yTexOffs + d + h),
-                    new Polygon([this.vertices[5], this.vertices[4], this.vertices[0], this.vertices[1]], this.xTexOffs + d, this.yTexOffs, this.xTexOffs + d + w, this.yTexOffs + d),
-                    new Polygon([this.vertices[2], this.vertices[3], this.vertices[7], this.vertices[6]], this.xTexOffs + d + w, this.yTexOffs, this.xTexOffs + d + w + w, this.yTexOffs + d),
-                    new Polygon([this.vertices[1], this.vertices[0], this.vertices[3], this.vertices[2]], this.xTexOffs + d, this.yTexOffs + d, this.xTexOffs + d + w, this.yTexOffs + d + h),
-                    new Polygon([this.vertices[4], this.vertices[5], this.vertices[6], this.vertices[7]], this.xTexOffs + d + w + d, this.yTexOffs + d, this.xTexOffs + d + w + d + w, this.yTexOffs + d + h)
-                ];
-            }
-
-            setPos(x, y, z) {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-            }
-
-            render() {
-                let c = 57.29578;
-                gl.pushMatrix();
-                gl.translatef(this.x, this.y, this.z);
-                gl.rotatef(this.zRot * c, 0.0, 0.0, 1.0);
-                gl.rotatef(this.yRot * c, 0.0, 1.0, 0.0);
-                gl.rotatef(this.xRot * c, 1.0, 0.0, 0.0);
-                gl.begin(gl.QUADS);
-                this.polygons.forEach(p => p.render());
-                gl.end();
-                gl.popMatrix();
-            }
-        }
-
-        class Polygon {
-            constructor(vertices, u0, v0, u1, v1) {
-                this.vertices = vertices;
-                if (u0 !== undefined) {
-                    this.vertices[0] = this.vertices[0].remap(u1, v0);
-                    this.vertices[1] = this.vertices[1].remap(u0, v0);
-                    this.vertices[2] = this.vertices[2].remap(u0, v1);
-                    this.vertices[3] = this.vertices[3].remap(u1, v1);
-                }
-            }
-
-            render() {
-                gl.color3f(1.0, 1.0, 1.0);
-                for (let i = 3; i >= 0; i--) {
-                    let v = this.vertices[i];
-                    gl.texCoord2f(v.u / 64.0, v.v / 32.0);
-                    gl.vertex3f(v.pos.x, v.pos.y, v.pos.z);
-                }
-            }
-        }
-
-        class Vertex {
-            constructor(pos, u, v) {
-                this.pos = pos;
-                this.u = u;
-                this.v = v;
-            }
-            remap(u, v) {
-                return new Vertex(this.pos, u, v);
-            }
-        }
-
-        function loadTexture(url) {
-            if (textureCache[url]) return textureCache[url];
-            let texture = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
-            textureCache[url] = texture;
-
-            let image = new Image();
-            image.onload = function() {
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-                gl.generateMipmap(gl.TEXTURE_2D);
-            };
-            image.src = url;
-            return texture;
-        }
-
-        function init() {
-            canvas = document.getElementById("gameCanvas");
-            canvas.width = WIDTH;
-            canvas.height = HEIGHT;
-            gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-            if (!gl) alert("WebGL not supported!");
-
-            gl.enable(gl.DEPTH_TEST);
-            gl.enable(gl.FOG);
-            gl.fogf(gl.FOG_DENSITY, 0.05);
-            gl.fogfv(gl.FOG_COLOR, new Float32Array([0.0, 0.0, 0.0, 1.0]));
-
-            gl.matrixMode(gl.PROJECTION);
-            gl.loadIdentity();
-            let aspect = WIDTH / HEIGHT;
-            let fov = 60.0 * Math.PI / 180.0;
-            let near = 0.1;
-            let far = 200.0;
-            let f = 1.0 / Math.tan(fov / 2);
-            let projectionMatrix = [
-                f / aspect, 0, 0, 0,
-                0, f, 0, 0,
-                0, 0, (far + near) / (near - far), -1,
-                0, 0, (2 * far * near) / (near - far), 0
-            ];
-            gl.loadMatrixf(new Float32Array(projectionMatrix));
-            gl.matrixMode(gl.MODELVIEW);
-
-            spawnInitialZombies();
-            lastWaveTime = Date.now();
-        }
-
+        // Game functions
         function spawnInitialZombies() {
-            let initialZombies = 64 + random.nextInt(37);
-            for (let i = 0; i < initialZombies; i++) spawnZombie();
+            for (let i = 0; i < 10; i++) {
+                spawnZombie();
+            }
         }
 
         function spawnZombie() {
-            let angle = random.nextFloat() * 2 * Math.PI;
-            let radius = random.nextFloat() * ZOMBIE_SPAWN_RADIUS;
-            let zombie = new Zombie(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-            zombie.rot = random.nextFloat() * Math.PI * 2;
-            zombies.push(zombie);
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * ZOMBIE_SPAWN_RADIUS;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            zombies.push(new Zombie(x, 0, z));
         }
 
         function update() {
-            let currentTime = Date.now();
+            const currentTime = Date.now();
+            
+            // Wave system
             if (currentTime - lastWaveTime > 30000) {
                 wave++;
-                zombiesNeededForNextWave = 10 + (wave * 5);
+                zombiesNeededForNextWave = 10 + wave * 5;
                 lastWaveTime = currentTime;
-                for (let i = 0; i < 5 + (wave * 3); i++) spawnZombie();
-            }
-
-            cameraAngleY = (cameraAngleY + 1.0) % 360.0;
-
-            for (let i = 0; i < zombies.length; i++) {
-                let zombie = zombies[i];
-                zombie.tick();
-                let speed = 0.03 + (wave * 0.005);
-                zombie.x += Math.sin(zombie.rot) * speed;
-                zombie.z += Math.cos(zombie.rot) * speed;
-
-                if (zombie.x < ZOMBIE_MIN) zombie.x = ZOMBIE_MIN, zombie.rot = Math.random() * Math.PI * 2;
-                if (zombie.x > ZOMBIE_MAX) zombie.x = ZOMBIE_MAX, zombie.rot = Math.random() * Math.PI * 2;
-                if (zombie.z < ZOMBIE_MIN) zombie.z = ZOMBIE_MIN, zombie.rot = Math.random() * Math.PI * 2;
-                if (zombie.z > ZOMBIE_MAX) zombie.z = ZOMBIE_MAX, zombie.rot = Math.random() * Math.PI * 2;
-
-                if (zombie.isDead()) {
-                    zombies.splice(i--, 1);
-                    score += 10 * wave;
-                    zombiesKilled++;
-                    if (zombiesKilled >= zombiesNeededForNextWave) {
-                        wave++;
-                        zombiesKilled = 0;
-                        zombiesNeededForNextWave = 10 + (wave * 5);
-                        lastWaveTime = currentTime;
-                        for (let j = 0; j < 5 + (wave * 3); j++) spawnZombie();
-                    }
+                for (let i = 0; i < 5 + wave * 3; i++) {
+                    spawnZombie();
                 }
             }
+
+            // Update zombies
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                zombies[i].update();
+                if (zombies[i].isDead()) {
+                    zombies.splice(i, 1);
+                }
+            }
+
+            // Check for next wave
+            if (zombiesKilled >= zombiesNeededForNextWave) {
+                wave++;
+                zombiesKilled = 0;
+                zombiesNeededForNextWave = 10 + wave * 5;
+                lastWaveTime = currentTime;
+                for (let i = 0; i < 5 + wave * 3; i++) {
+                    spawnZombie();
+                }
+            }
+
+            // Update camera
+            cameraAngleY = (cameraAngleY + 0.5) % 360;
         }
 
         function render() {
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            gl.loadIdentity();
-            gl.translatef(0, 0, -15);
-            gl.rotatef(cameraAngleX, 1, 0, 0);
-            gl.rotatef(cameraAngleY, 0, 1, 0);
+
+            // Set up view matrix
+            const viewMatrix = mat4.create();
+            mat4.translate(viewMatrix, viewMatrix, [0.0, 0.0, -15.0]);
+            mat4.rotate(viewMatrix, viewMatrix, cameraAngleX * Math.PI / 180, [1, 0, 0]);
+            mat4.rotate(viewMatrix, viewMatrix, cameraAngleY * Math.PI / 180, [0, 1, 0]);
+
+            // Render zombies
+            zombies.forEach(zombie => zombie.render());
+
+            // Render platform
             renderPlatform();
-            zombies.forEach(z => z.render(1.0));
-            renderGUI();
+
+            // Render UI
+            renderUI();
         }
 
         function renderPlatform() {
-            gl.enable(gl.TEXTURE_2D);
-            gl.bindTexture(gl.TEXTURE_2D, loadTexture("res/ZT/grass.png"));
-            gl.begin(gl.QUADS);
-            gl.color3f(1.0, 1.0, 1.0);
-            gl.texCoord2f(WORLD_MIN/4, WORLD_MIN/4);
-            gl.vertex3f(WORLD_MIN, 0, WORLD_MIN);
-            gl.texCoord2f(WORLD_MIN/4, WORLD_MAX/4);
-            gl.vertex3f(WORLD_MIN, 0, WORLD_MAX);
-            gl.texCoord2f(WORLD_MAX/4, WORLD_MAX/4);
-            gl.vertex3f(WORLD_MAX, 0, WORLD_MAX);
-            gl.texCoord2f(WORLD_MAX/4, WORLD_MIN/4);
-            gl.vertex3f(WORLD_MAX, 0, WORLD_MIN);
-            gl.end();
-            gl.disable(gl.TEXTURE_2D);
-
-            gl.begin(gl.LINES);
-            gl.color3f(0.7, 0.7, 0.7);
-            for (let x = WORLD_MIN; x <= WORLD_MAX; x += 5.0) {
-                gl.vertex3f(x, 0.01, WORLD_MIN);
-                gl.vertex3f(x, 0.01, WORLD_MAX);
-            }
-            for (let z = WORLD_MIN; z <= WORLD_MAX; z += 5.0) {
-                gl.vertex3f(WORLD_MIN, 0.01, z);
-                gl.vertex3f(WORLD_MAX, 0.01, z);
-            }
-            gl.end();
+            const modelMatrix = mat4.create();
+            mat4.translate(modelMatrix, modelMatrix, [0, -1, 0]);
+            mat4.scale(modelMatrix, modelMatrix, [WORLD_SIZE, 0.1, WORLD_SIZE]);
+            gl.uniformMatrix4fv(uModelViewMatrix, false, modelMatrix);
+            gl.drawArrays(gl.TRIANGLES, 0, 36);
         }
 
-        function renderGUI() {
-            gl.matrixMode(gl.PROJECTION);
-            gl.pushMatrix();
-            gl.loadIdentity();
-            gl.ortho(0, WIDTH, HEIGHT, 0, -1, 1);
-            gl.matrixMode(gl.MODELVIEW);
-            gl.pushMatrix();
-            gl.loadIdentity();
-            gl.disable(gl.DEPTH_TEST);
-            gl.disable(gl.FOG);
-            renderText("Score: " + score, 20, 30);
-            renderText("Wave: " + wave, 20, 60);
-            renderText("Zombies: " + zombies.length, 20, 90);
-            gl.enable(gl.DEPTH_TEST);
-            gl.enable(gl.FOG);
-            gl.popMatrix();
-            gl.matrixMode(gl.PROJECTION);
-            gl.popMatrix();
-            gl.matrixMode(gl.MODELVIEW);
+        function renderUI() {
+            // Simple text rendering would go here
+            // For now we'll just log the stats
+            console.log(`Score: ${score} | Wave: ${wave} | Zombies: ${zombies.length}`);
         }
 
-        function renderText(text, x, y) {
-            gl.enable(gl.TEXTURE_2D);
-            gl.enable(gl.BLEND);
-            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-            gl.bindTexture(gl.TEXTURE_2D, loadTexture("res/ZT/default.png"));
-            gl.color3f(1.0, 1.0, 1.0);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-            let texelSize = 8.0 / 128;
-            let charWidth = 16;
-            let charHeight = 16;
-
-            gl.begin(gl.QUADS);
-            for (let i = 0; i < text.length; i++) {
-                let c = text.charAt(i);
-                let charId = getCharId(c);
-                if (charId >= 0) {
-                    let cx = charId % 16;
-                    let cy = Math.floor(charId / 16);
-                    let u1 = cx * texelSize;
-                    let v1 = cy * texelSize;
-                    let u2 = (cx + 1) * texelSize;
-                    let v2 = (cy + 1) * texelSize;
-
-                    gl.texCoord2f(u1, v1);
-                    gl.vertex2f(x + i * charWidth, y);
-                    gl.texCoord2f(u1, v2);
-                    gl.vertex2f(x + i * charWidth, y + charHeight);
-                    gl.texCoord2f(u2, v2);
-                    gl.vertex2f(x + i * charWidth + charWidth, y + charHeight);
-                    gl.texCoord2f(u2, v1);
-                    gl.vertex2f(x + i * charWidth + charWidth, y);
-                }
-            }
-            gl.end();
-            gl.disable(gl.BLEND);
-            gl.disable(gl.TEXTURE_2D);
-        }
-
-        function getCharId(c) {
-            if (c >= '0' && c <= '9') return c.charCodeAt(0) - '0'.charCodeAt(0);
-            if (c >= 'a' && c <= 'z') return c.charCodeAt(0) - 'a'.charCodeAt(0) + 10;
-            if (c >= 'A' && c <= 'Z') return c.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
-            if (c === ':') return 36;
-            if (c === ' ') return 37;
-            if (c === '/') return 38;
-            if (c === '!') return 39;
-            return 37;
-        }
-
-        function loop() {
+        function gameLoop() {
             update();
             render();
-            requestAnimationFrame(loop);
+            requestAnimationFrame(gameLoop);
         }
 
-        init();
-        loop();
+        // Initialize the game when the page loads
+        window.onload = function() {
+            // Load gl-matrix library dynamically
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js';
+            script.onload = init;
+            document.head.appendChild(script);
+        };
     </script>
 </body>
 </html>
