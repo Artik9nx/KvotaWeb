@@ -12,7 +12,11 @@
             font-style: normal;
         }
 
-        body, button, select, option, input, textarea {
+        /* Применяем Minecraft ко всем текстовым элементам */
+        body, button, select, option, input, textarea, 
+        .version-info, .social-links, .social-link, 
+        .social-separator, .premium-message, #versionText,
+        #versionSelect, #logo {
             font-family: 'Minecraft', sans-serif !important;
             font-weight: bold;
         }
@@ -150,7 +154,7 @@
         <button onclick="launchVersion()">LAUNCH</button>
     </div>
 
-    <div class="version-info">Version: <span id="versionText">0.5.0</span></div>
+    <div class="version-info">Version: <span id="versionText">0.5.2</span></div>
 
     <div class="social-links">
         <a href="https://discord.gg/ваша_ссылка" class="social-link" target="_blank">Discord</a>
