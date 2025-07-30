@@ -30,98 +30,6 @@
             overflow: hidden;
         }
 
-        .logo {
-            margin: 20px 0 0 10px;
-            max-width: 60%;
-            align-self: flex-start;
-            cursor: pointer;
-        }
-
-        .menu-container {
-            position: absolute;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            width: 150px;
-        }
-
-        select {
-            width: 100%;
-            height: 28px;
-            font-size: 14px;
-            background-color: #ffc000;
-            border: none;
-            color: #000;
-            cursor: pointer;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            padding: 0 5px;
-        }
-
-        button {
-            width: 100%;
-            height: 28px;
-            font-size: 14px;
-            cursor: pointer;
-            background-color: #ffc000;
-            border: none;
-            color: #000;
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: #ffd700;
-        }
-
-        .version-info {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            font-size: 14px;
-            color: white;
-        }
-        .version-info span {
-            color: #0000FF;
-        }
-
-        .screenshot {
-            position: absolute;
-            top: 50%;
-            right: 20px;
-            transform: translateY(-50%);
-            max-width: 50%;
-            max-height: 50%;
-        }
-
-        .social-links {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            display: flex;
-            gap: 15px;
-            font-size: 16px;
-        }
-
-        .social-link {
-            color: #ffc000;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .social-link:hover {
-            color: #ffd700;
-            text-decoration: underline;
-        }
-
-        .social-separator {
-            color: white;
-        }
-
-        /* Loading screen styles */
         .loading-screen {
             position: fixed;
             top: 0;
@@ -140,71 +48,35 @@
 
         .loading-text {
             color: white;
-            font-size: 24px;
-            margin-bottom: 20px;
+            font-size: 16px;
+            margin-bottom: 10px;
             text-shadow: 2px 2px 4px #000;
         }
 
         .loading-bar-container {
-            width: 150px;
+            width: 200px;
             height: 5px;
-            background-color: #555;
-            border-radius: 2px;
+            background-color: #4B4746;
             overflow: hidden;
         }
 
         .loading-bar {
             height: 100%;
             width: 0;
-            background-color: #00FF00;
+            background-color: #88F987;
             transition: width 0.3s;
         }
     </style>
 </head>
 <body>
-    <div class="loading-screen" id="loadingScreen">
-        <div class="loading-text">Opening...</div>
-        <div class="loading-bar-container">
-            <div class="loading-bar" id="loadingBar"></div>
-        </div>
-    </div>
-
-    <img src="Res/logo.png" alt="Logo" class="logo" id="logo">
-    <img src="Res/Screenshot.png" alt="Screenshot" class="screenshot">
-
-    <div class="menu-container">
-        <select id="versionSelect">
-            <option value="Minecraft4kOLD.html">Minecraft4k-OLD</option>
-            <option value="Minecraft4k.html">Minecraft4k</option>
-            <option value="RD132211.html">RD132211</option>
-            <option value="VVVVVV.html">VVVVVV4k</option>
-            <option value="Miners4k.html">Miners4k</option>
-            <option value="SonicRacer4k.html">SonicRacer4k</option>
-            <option value="Left4kDeadTest.html">Left4kDeadTest</option>
-        </select>
-        <button onclick="launchVersion()">LAUNCH</button>
-    </div>
-
-    <div class="version-info">Version: <span id="versionText">0.5.2</span></div>
-
-    <div class="social-links">
-        <a href="https://discord.gg/554PftPFcU" class="social-link" target="_blank">Discord</a>
-        <span class="social-separator">|</span>
-        <a href="https://t.me/KvotaWeb" class="social-link" target="_blank">Telegram</a>
-        <span class="social-separator">|</span>
-        <a href="https://github.com/Artik9nx/KvotaWeb" class="social-link" target="_blank">Source</a>
-    </div>
-
     <script>
         function launchVersion() {
             const selectedVersion = document.getElementById('versionSelect').value;
             if (selectedVersion) {
-                // Show loading screen
                 const loadingScreen = document.getElementById('loadingScreen');
                 const loadingBar = document.getElementById('loadingBar');
                 loadingScreen.style.display = 'flex';
                 
-                // Animate loading bar
                 let progress = 0;
                 const interval = setInterval(() => {
                     progress += 10;
@@ -212,7 +84,6 @@
                     
                     if (progress >= 100) {
                         clearInterval(interval);
-                        // Redirect after animation completes
                         setTimeout(() => {
                             window.location.href = selectedVersion;
                         }, 300);
