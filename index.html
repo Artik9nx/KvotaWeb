@@ -4,17 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KvotaWeb</title>
-    <link rel="icon" href="Res/Legacy-grass-no-bg-preview-carve-photos.png" type="image/png">
     <style>
         @font-face {
             font-family: 'Minecraft';
-            src: url('Fonts/Minecraft.ttf') format('truetype');
+            src: url('Fonts/minecraft.ttf') format('truetype');
             font-weight: normal;
             font-style: normal;
             font-display: swap;
         }
 
-        * {
+        body, button, select, option, input, textarea {
             font-family: 'Minecraft', sans-serif !important;
             font-weight: bold;
         }
@@ -58,6 +57,10 @@
             border: none;
             color: #000;
             cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            padding: 0 5px;
         }
 
         button {
