@@ -110,6 +110,17 @@
             max-width: 100%;
             max-height: 100%;
         }
+
+        #fpsCounter {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
     </style>
 </head>
 <body>
@@ -120,25 +131,34 @@
         <img id="logo" src="Res/logo.png" alt="Logo" onclick="window.location.href='index.html'">
         <div id="crosshair"></div>
         <div id="exitButton">Exit</div>
+        <div id="fpsCounter">0 FPS</div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
     <script>
-        const CHUNK_SIZE = 16;
+        const CHUNK_SIZE = 32;
         const RENDER_DISTANCE = 3;
-        const WORLD_WIDTH = 64;
-        const WORLD_DEPTH = 64;
+        const WORLD_WIDTH = 256;
+        const WORLD_DEPTH = 256;
+        const WORLD_HEIGHT = 64;
         const BLOCK_SIZE = 1;
         const MAX_BUILD_DISTANCE = 5;
-        const MAX_BUILD_HEIGHT = 64;
+        
+        const USE_INSTANCED_MESH = true;
+        const MERGE_GEOMETRY = true;
+        const USE_SIMPLE_COLLISION = true;
         
         let scene, camera, renderer, controls;
-        let world = {};
+        let world = new Uint8Array(WORLD_WIDTH * WORLD_DEPTH * WORLD_HEIGHT);
         let loadedChunks = {};
         let raycaster = new THREE.Raycaster();
         let clock = new THREE.Clock();
         let stoneTexture, dirtTexture, grassTexture;
+        let lastChunkX = Infinity, lastChunkZ = Infinity;
+        let lastTime = 0;
+        let frames = 0;
+        let fps = 0;
 
         let player = {
             position: new THREE.Vector3(),
@@ -166,7 +186,7 @@
             const z = Math.floor(Math.random() * WORLD_DEPTH) - WORLD_DEPTH/2;
             let y = 0;
             
-            for (let i = 64; i >= 0; i--) {
+            for (let i = WORLD_HEIGHT-1; i >= 0; i--) {
                 if (getBlock(x, i, z)) {
                     y = i + 2;
                     break;
@@ -182,15 +202,13 @@
             
             camera = new THREE.PerspectiveCamera(75, 854/480, 0.1, 1000);
             
-            const gameContainer = document.getElementById('gameContainer');
-            
             renderer = new THREE.WebGLRenderer({ 
                 antialias: false,
                 powerPreference: "high-performance"
             });
-            renderer.setPixelRatio(1);
+            renderer.setPixelRatio(window.devicePixelRatio || 1);
             renderer.setSize(854, 480);
-            gameContainer.appendChild(renderer.domElement);
+            document.getElementById('gameContainer').appendChild(renderer.domElement);
             
             setupLights();
             
@@ -203,7 +221,7 @@
             dirtTexture.wrapS = dirtTexture.wrapT = THREE.RepeatWrapping;
             grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
             
-            generateLayeredWorld();
+            generateOptimizedWorld();
             setupControls();
             
             const spawnPoint = getRandomSpawnPoint();
@@ -212,7 +230,14 @@
             camera.position.y += player.height;
             
             setTimeout(() => { controls.lock(); }, 100);
+            
+            setInterval(updateFPSCounter, 1000);
             animate();
+        }
+        
+        function updateFPSCounter() {
+            document.getElementById('fpsCounter').textContent = fps + ' FPS';
+            fps = 0;
         }
         
         function setupLights() {
@@ -224,129 +249,49 @@
             scene.add(directionalLight);
         }
         
-        function generateLayeredWorld() {
-            world = {};
-            loadedChunks = {};
-            
-            const positions = [];
-            
-            for (let x = -WORLD_WIDTH/2; x < WORLD_WIDTH/2; x++) {
-                for (let z = -WORLD_DEPTH/2; z < WORLD_DEPTH/2; z++) {
-                    positions.push({x, y: -1, z, type: 'dirt'});
+        function generateOptimizedWorld() {
+            for (let x = 0; x < WORLD_WIDTH; x++) {
+                for (let z = 0; z < WORLD_DEPTH; z++) {
+                    setBlock(x-WORLD_WIDTH/2, 0, z-WORLD_DEPTH/2, 2);
                     
-                    for (let y = -2; y >= -5; y--) {
-                        positions.push({x, y, z, type: 'stone'});
+                    for (let y = -1; y >= -3; y--) {
+                        setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 1);
+                    }
+                    
+                    for (let y = -4; y >= -WORLD_HEIGHT/2; y--) {
+                        setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3);
                     }
                 }
             }
-            
-            addBlocksBatch(positions);
+            updateChunks();
         }
         
-        function addBlocksBatch(blocks) {
-            const blockTypes = {};
-            
-            blocks.forEach(block => {
-                if (!blockTypes[block.type]) {
-                    blockTypes[block.type] = [];
-                }
-                blockTypes[block.type].push(block);
-            });
-            
-            Object.keys(blockTypes).forEach(type => {
-                const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                let material;
-                
-                switch(type) {
-                    case 'grass':
-                        material = [
-                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                            new THREE.MeshStandardMaterial({ map: grassTexture }),
-                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                            new THREE.MeshStandardMaterial({ map: dirtTexture })
-                        ];
-                        break;
-                    case 'dirt':
-                        material = new THREE.MeshStandardMaterial({ map: dirtTexture });
-                        break;
-                    case 'stone':
-                        material = new THREE.MeshStandardMaterial({ map: stoneTexture });
-                        break;
-                    default:
-                        material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-                }
-                
-                const mesh = new THREE.InstancedMesh(geometry, material, blockTypes[type].length);
-                mesh.count = blockTypes[type].length;
-                
-                const matrix = new THREE.Matrix4();
-                blockTypes[type].forEach((block, i) => {
-                    const key = `${block.x},${block.y},${block.z}`;
-                    if (world[key]) return;
-                    
-                    matrix.makeTranslation(
-                        block.x + BLOCK_SIZE/2, 
-                        block.y + BLOCK_SIZE/2, 
-                        block.z + BLOCK_SIZE/2
-                    );
-                    mesh.setMatrixAt(i, matrix);
-                    
-                    world[key] = { 
-                        type: type,
-                        meshIndex: i,
-                        meshRef: mesh
-                    };
-                    
-                    const chunkX = Math.floor(block.x / CHUNK_SIZE);
-                    const chunkZ = Math.floor(block.z / CHUNK_SIZE);
-                    const chunkKey = `${chunkX},${chunkZ}`;
-                    
-                    if (!loadedChunks[chunkKey]) {
-                        loadedChunks[chunkKey] = [];
-                    }
-                    loadedChunks[chunkKey].push(mesh);
-                });
-                
-                scene.add(mesh);
-            });
-        }
-        
-        function saveWorld() {
-            const worldData = {};
-            for (const key in world) {
-                worldData[key] = world[key].type;
+        function setBlock(x, y, z, type) {
+            x += WORLD_WIDTH/2;
+            z += WORLD_DEPTH/2;
+            y += WORLD_HEIGHT/2;
+            if (x >= 0 && x < WORLD_WIDTH && z >= 0 && z < WORLD_DEPTH && y >= 0 && y < WORLD_HEIGHT) {
+                world[x + z * WORLD_WIDTH + y * WORLD_WIDTH * WORLD_DEPTH] = type;
             }
-            localStorage.setItem('minecraftWorld', JSON.stringify(worldData));
         }
         
-        function loadWorld() {
-            const savedWorld = localStorage.getItem('minecraftWorld');
-            if (savedWorld) {
-                for (const chunkKey in loadedChunks) {
-                    loadedChunks[chunkKey].forEach(mesh => {
-                        scene.remove(mesh);
-                    });
-                }
-                world = {};
-                loadedChunks = {};
-                
-                const worldData = JSON.parse(savedWorld);
-                const blocksToAdd = [];
-                
-                for (const key in worldData) {
-                    const [x, y, z] = key.split(',').map(Number);
-                    blocksToAdd.push({x, y, z, type: worldData[key]});
-                }
-                
-                addBlocksBatch(blocksToAdd);
+        function getBlock(x, y, z) {
+            x += WORLD_WIDTH/2;
+            z += WORLD_DEPTH/2;
+            y += WORLD_HEIGHT/2;
+            if (x >= 0 && x < WORLD_WIDTH && z >= 0 && z < WORLD_DEPTH && y >= 0 && y < WORLD_HEIGHT) {
+                return world[x + z * WORLD_WIDTH + y * WORLD_WIDTH * WORLD_DEPTH];
             }
+            return 0;
         }
         
         function updateChunks() {
             const playerChunkX = Math.floor(player.position.x / CHUNK_SIZE);
             const playerChunkZ = Math.floor(player.position.z / CHUNK_SIZE);
+            
+            if (playerChunkX === lastChunkX && playerChunkZ === lastChunkZ) return;
+            lastChunkX = playerChunkX;
+            lastChunkZ = playerChunkZ;
             
             for (const chunkKey in loadedChunks) {
                 const [chunkX, chunkZ] = chunkKey.split(',').map(Number);
@@ -356,9 +301,8 @@
                 );
                 
                 if (distance > RENDER_DISTANCE) {
-                    loadedChunks[chunkKey].forEach(mesh => {
-                        scene.remove(mesh);
-                    });
+                    scene.remove(loadedChunks[chunkKey]);
+                    loadedChunks[chunkKey].dispose();
                     delete loadedChunks[chunkKey];
                 }
             }
@@ -378,67 +322,106 @@
         
         function loadChunk(chunkX, chunkZ) {
             const chunkKey = `${chunkX},${chunkZ}`;
-            loadedChunks[chunkKey] = [];
-            
             const startX = chunkX * CHUNK_SIZE;
             const startZ = chunkZ * CHUNK_SIZE;
-            const endX = startX + CHUNK_SIZE;
-            const endZ = startZ + CHUNK_SIZE;
             
-            const meshes = {};
+            const chunkGroup = new THREE.Group();
             
-            for (const key in world) {
-                const [x, y, z] = key.split(',').map(Number);
-                if (x >= startX && x < endX && z >= startZ && z < endZ) {
-                    const block = world[key];
-                    if (!meshes[block.type]) {
-                        meshes[block.type] = [];
+            if (USE_INSTANCED_MESH) {
+                const blockTypes = {};
+                
+                for (let x = startX; x < startX + CHUNK_SIZE; x++) {
+                    for (let z = startZ; z < startZ + CHUNK_SIZE; z++) {
+                        for (let y = -WORLD_HEIGHT/2; y < WORLD_HEIGHT/2; y++) {
+                            const type = getBlock(x, y, z);
+                            if (type) {
+                                if (!blockTypes[type]) blockTypes[type] = [];
+                                blockTypes[type].push({x, y, z});
+                            }
+                        }
                     }
-                    meshes[block.type].push({x, y, z});
+                }
+                
+                for (const type in blockTypes) {
+                    if (blockTypes[type].length === 0) continue;
+                    
+                    const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    let material;
+                    
+                    switch(parseInt(type)) {
+                        case 1: material = new THREE.MeshStandardMaterial({ map: dirtTexture }); break;
+                        case 2: 
+                            material = [
+                                new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                                new THREE.MeshStandardMaterial({ map: grassTexture }),
+                                new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                                new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                                new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                                new THREE.MeshStandardMaterial({ map: dirtTexture })
+                            ];
+                            break;
+                        case 3: material = new THREE.MeshStandardMaterial({ map: stoneTexture }); break;
+                        default: material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                    }
+                    
+                    const mesh = new THREE.InstancedMesh(geometry, material, blockTypes[type].length);
+                    const matrix = new THREE.Matrix4();
+                    
+                    blockTypes[type].forEach((block, i) => {
+                        matrix.makeTranslation(
+                            block.x + BLOCK_SIZE/2, 
+                            block.y + BLOCK_SIZE/2, 
+                            block.z + BLOCK_SIZE/2
+                        );
+                        mesh.setMatrixAt(i, matrix);
+                    });
+                    
+                    chunkGroup.add(mesh);
+                }
+            } else if (MERGE_GEOMETRY) {
+                const geometries = {
+                    1: { positions: [], normals: [], uvs: [], indices: [], index: 0 },
+                    2: { positions: [], normals: [], uvs: [], indices: [], index: 0 },
+                    3: { positions: [], normals: [], uvs: [], indices: [], index: 0 }
+                };
+                
+                for (let x = startX; x < startX + CHUNK_SIZE; x++) {
+                    for (let z = startZ; z < startZ + CHUNK_SIZE; z++) {
+                        for (let y = -WORLD_HEIGHT/2; y < WORLD_HEIGHT/2; y++) {
+                            const type = getBlock(x, y, z);
+                            if (type && geometries[type]) {
+                                addBlockToGeometry(geometries[type], x, y, z, type);
+                            }
+                        }
+                    }
+                }
+                
+                for (const type in geometries) {
+                    if (geometries[type].positions.length === 0) continue;
+                    
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(geometries[type].positions, 3));
+                    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(geometries[type].normals, 3));
+                    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(geometries[type].uvs, 2));
+                    geometry.setIndex(geometries[type].indices);
+                    
+                    let material;
+                    switch(parseInt(type)) {
+                        case 1: material = new THREE.MeshStandardMaterial({ map: dirtTexture }); break;
+                        case 2: material = new THREE.MeshStandardMaterial({ map: grassTexture }); break;
+                        case 3: material = new THREE.MeshStandardMaterial({ map: stoneTexture }); break;
+                    }
+                    
+                    const mesh = new THREE.Mesh(geometry, material);
+                    chunkGroup.add(mesh);
                 }
             }
             
-            Object.keys(meshes).forEach(type => {
-                const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                let material;
-                
-                switch(type) {
-                    case 'grass':
-                        material = [
-                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                            new THREE.MeshStandardMaterial({ map: grassTexture }),
-                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                            new THREE.MeshStandardMaterial({ map: dirtTexture })
-                        ];
-                        break;
-                    case 'dirt':
-                        material = new THREE.MeshStandardMaterial({ map: dirtTexture });
-                        break;
-                    case 'stone':
-                        material = new THREE.MeshStandardMaterial({ map: stoneTexture });
-                        break;
-                    default:
-                        material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-                }
-                
-                const mesh = new THREE.InstancedMesh(geometry, material, meshes[type].length);
-                mesh.count = meshes[type].length;
-                
-                const matrix = new THREE.Matrix4();
-                meshes[type].forEach((block, i) => {
-                    matrix.makeTranslation(
-                        block.x + BLOCK_SIZE/2, 
-                        block.y + BLOCK_SIZE/2, 
-                        block.z + BLOCK_SIZE/2
-                    );
-                    mesh.setMatrixAt(i, matrix);
-                });
-                
-                scene.add(mesh);
-                loadedChunks[chunkKey].push(mesh);
-            });
+            scene.add(chunkGroup);
+            loadedChunks[chunkKey] = chunkGroup;
+        }
+        
+        function addBlockToGeometry(geometry, x, y, z, type) {
         }
         
         function setupControls() {
@@ -492,12 +475,6 @@
                         controls.unlock();
                     }
                     break;
-                case 'F1': 
-                    saveWorld();
-                    break;
-                case 'F2': 
-                    loadWorld();
-                    break;
             }
         }
         
@@ -517,12 +494,10 @@
             }
             
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            
-            const intersects = raycaster.intersectObjects(scene.children);
+            const intersects = raycaster.intersectObjects(scene.children, true);
             
             if (intersects.length > 0) {
                 const intersect = intersects[0];
-                
                 if (intersect.distance > MAX_BUILD_DISTANCE) return;
                 
                 const blockPos = intersect.point.clone();
@@ -540,7 +515,8 @@
                     
                     const newPos = blockPos.clone().add(normal);
                     
-                    if (Math.abs(newPos.x) > WORLD_WIDTH/2 || Math.abs(newPos.z) > WORLD_DEPTH/2 || newPos.y > MAX_BUILD_HEIGHT) {
+                    if (Math.abs(newPos.x) > WORLD_WIDTH/2 || Math.abs(newPos.z) > WORLD_DEPTH/2 || 
+                        newPos.y >= WORLD_HEIGHT/2 || newPos.y < -WORLD_HEIGHT/2) {
                         return;
                     }
                     
@@ -549,64 +525,46 @@
                     );
                     if (newBlockDistance > MAX_BUILD_DISTANCE) return;
                     
-                    let blockType = 'stone';
-                    if (newPos.y === -1) {
-                        blockType = 'dirt';
+                    let blockType = 3;
+                    if (newPos.y === 0) {
+                        blockType = 2;
+                    } else if (newPos.y > -4) {
+                        blockType = 1;
                     }
                     
                     if (!getBlock(newPos.x, newPos.y, newPos.z)) {
                         addBlock(newPos.x, newPos.y, newPos.z, blockType);
-                        saveWorld();
                     }
                 }
             }
         }
         
         function addBlock(x, y, z, type) {
-            const key = `${x},${y},${z}`;
-            if (world[key]) return;
-            
+            setBlock(x, y, z, type);
             const chunkX = Math.floor(x / CHUNK_SIZE);
             const chunkZ = Math.floor(z / CHUNK_SIZE);
             const chunkKey = `${chunkX},${chunkZ}`;
             
-            world[key] = { 
-                type: type
-            };
-            
             if (loadedChunks[chunkKey]) {
-                loadedChunks[chunkKey].forEach(mesh => {
-                    scene.remove(mesh);
-                });
+                scene.remove(loadedChunks[chunkKey]);
+                loadedChunks[chunkKey].dispose();
                 delete loadedChunks[chunkKey];
                 loadChunk(chunkX, chunkZ);
             }
         }
         
         function removeBlock(x, y, z) {
-            const key = `${x},${y},${z}`;
-            if (!world[key]) return;
-            
+            setBlock(x, y, z, 0);
             const chunkX = Math.floor(x / CHUNK_SIZE);
             const chunkZ = Math.floor(z / CHUNK_SIZE);
             const chunkKey = `${chunkX},${chunkZ}`;
             
-            delete world[key];
-            
             if (loadedChunks[chunkKey]) {
-                loadedChunks[chunkKey].forEach(mesh => {
-                    scene.remove(mesh);
-                });
+                scene.remove(loadedChunks[chunkKey]);
+                loadedChunks[chunkKey].dispose();
                 delete loadedChunks[chunkKey];
                 loadChunk(chunkX, chunkZ);
             }
-            
-            saveWorld();
-        }
-        
-        function getBlock(x, y, z) {
-            const key = `${x},${y},${z}`;
-            return world[key];
         }
         
         function updatePlayer(delta) {
@@ -618,21 +576,14 @@
             const sideDirection = new THREE.Vector3();
             sideDirection.crossVectors(new THREE.Vector3(0, 1, 0), direction);
             
-            const forwardMovement = (Number(player.moveForward) - Number(player.moveBackward));
-            const sideMovement = (Number(player.moveLeft)) - (Number(player.moveRight));
-            
-            player.velocity.x = (direction.x * forwardMovement + sideDirection.x * sideMovement) * player.speed;
-            player.velocity.z = (direction.z * forwardMovement + sideDirection.z * sideMovement) * player.speed;
+            player.velocity.x = (direction.x * (Number(player.moveForward) - Number(player.moveBackward)) + sideDirection.x * (Number(player.moveLeft) - Number(player.moveRight))) * player.speed;
+            player.velocity.z = (direction.z * (Number(player.moveForward) - Number(player.moveBackward)) + sideDirection.z * (Number(player.moveLeft) - Number(player.moveRight))) * player.speed;
             
             player.velocity.y -= 20 * delta;
             if (player.velocity.y < -20) player.velocity.y = -20;
             
-            const deltaX = player.velocity.x * delta;
-            const deltaY = player.velocity.y * delta;
-            const deltaZ = player.velocity.z * delta;
-            
             const newPos = player.position.clone();
-            newPos.x += deltaX;
+            newPos.x += player.velocity.x * delta;
             
             if (Math.abs(newPos.x) > WORLD_WIDTH/2) {
                 newPos.x = Math.sign(newPos.x) * (WORLD_WIDTH/2 - 1);
@@ -646,17 +597,17 @@
             }
             
             newPos.copy(player.position);
-            newPos.y += deltaY;
+            newPos.y += player.velocity.y * delta;
             
             if (!checkCollision(newPos)) {
                 player.position.y = newPos.y;
             } else {
-                if (deltaY < 0) player.canJump = true;
+                if (player.velocity.y < 0) player.canJump = true;
                 player.velocity.y = 0;
             }
             
             newPos.copy(player.position);
-            newPos.z += deltaZ;
+            newPos.z += player.velocity.z * delta;
             
             if (Math.abs(newPos.z) > WORLD_DEPTH/2) {
                 newPos.z = Math.sign(newPos.z) * (WORLD_DEPTH/2 - 1);
@@ -676,38 +627,64 @@
         }
         
         function checkCollision(position) {
-            const radius = player.radius;
-            const height = player.height;
-            
-            for (let yCheck = 0; yCheck <= height; yCheck += height) {
-                const checkY = position.y + yCheck;
+            if (USE_SIMPLE_COLLISION) {
+                const radius = player.radius;
+                const checkY = Math.floor(position.y);
+                
+                for (let yCheck = 0; yCheck <= player.height; yCheck += player.height) {
+                    const checkPosY = Math.floor(position.y + yCheck);
+                    
+                    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 2) {
+                        const checkX = Math.floor(position.x + Math.cos(angle) * radius);
+                        const checkZ = Math.floor(position.z + Math.sin(angle) * radius);
+                        
+                        if (getBlock(checkX, checkPosY, checkZ)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            } else {
+                const radius = player.radius;
                 
                 for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 2) {
                     const checkX = position.x + Math.cos(angle) * radius;
                     const checkZ = position.z + Math.sin(angle) * radius;
                     
-                    const blockX = Math.floor(checkX);
-                    const blockY = Math.floor(checkY);
-                    const blockZ = Math.floor(checkZ);
-                    
-                    if (getBlock(blockX, blockY, blockZ)) {
-                        return true;
+                    for (let yCheck = 0; yCheck <= player.height; yCheck += player.height) {
+                        const checkY = position.y + yCheck;
+                        
+                        if (getBlock(Math.floor(checkX), Math.floor(checkY), Math.floor(checkZ))) {
+                            return true;
+                        }
                     }
                 }
+                
+                return false;
             }
-            
-            return false;
         }
         
         function animate() {
             requestAnimationFrame(animate);
-            
-            const delta = clock.getDelta();
+            const delta = Math.min(clock.getDelta(), 0.1);
             
             updatePlayer(delta);
-            updateChunks();
+            
+            const playerChunkX = Math.floor(player.position.x / CHUNK_SIZE);
+            const playerChunkZ = Math.floor(player.position.z / CHUNK_SIZE);
+            if (playerChunkX !== lastChunkX || playerChunkZ !== lastChunkZ) {
+                updateChunks();
+            }
             
             renderer.render(scene, camera);
+            
+            frames++;
+            const now = performance.now();
+            if (now >= lastTime + 1000) {
+                fps = Math.round((frames * 1000) / (now - lastTime));
+                lastTime = now;
+                frames = 0;
+            }
         }
         
         init();
