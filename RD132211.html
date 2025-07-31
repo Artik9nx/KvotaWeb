@@ -429,39 +429,41 @@
                 const intersect = intersects[0];
                 if (intersect.distance > MAX_BUILD_DISTANCE) return;
                 
-                const blockPos = intersect.point.clone();
-                blockPos.x = Math.floor(blockPos.x - BLOCK_SIZE/2);
-                blockPos.y = Math.floor(blockPos.y - BLOCK_SIZE/2);
-                blockPos.z = Math.floor(blockPos.z - BLOCK_SIZE/2);
+                const blockPos = new THREE.Vector3();
+                blockPos.copy(intersect.point);
                 
                 if (event.button === 0) {
+                    // Удаление блока
+                    blockPos.add(intersect.face.normal.multiplyScalar(-0.5));
+                    blockPos.x = Math.floor(blockPos.x);
+                    blockPos.y = Math.floor(blockPos.y);
+                    blockPos.z = Math.floor(blockPos.z);
                     removeBlock(blockPos.x, blockPos.y, blockPos.z);
                 } else if (event.button === 2) {
-                    const normal = intersect.face.normal.clone();
-                    normal.x = Math.round(normal.x);
-                    normal.y = Math.round(normal.y);
-                    normal.z = Math.round(normal.z);
+                    // Установка блока
+                    blockPos.add(intersect.face.normal.multiplyScalar(0.5));
+                    blockPos.x = Math.floor(blockPos.x);
+                    blockPos.y = Math.floor(blockPos.y);
+                    blockPos.z = Math.floor(blockPos.z);
                     
-                    const newPos = blockPos.clone().add(normal);
-                    
-                    if (Math.abs(newPos.x) > WORLD_WIDTH/2 || Math.abs(newPos.z) > WORLD_DEPTH/2 || newPos.y >= WORLD_HEIGHT-5 || newPos.y < -5) {
+                    if (Math.abs(blockPos.x) > WORLD_WIDTH/2 || Math.abs(blockPos.z) > WORLD_DEPTH/2 || blockPos.y >= WORLD_HEIGHT-5 || blockPos.y < -5) {
                         return;
                     }
                     
                     const newBlockDistance = player.position.distanceTo(
-                        new THREE.Vector3(newPos.x + BLOCK_SIZE/2, newPos.y + BLOCK_SIZE/2, newPos.z + BLOCK_SIZE/2)
+                        new THREE.Vector3(blockPos.x + BLOCK_SIZE/2, blockPos.y + BLOCK_SIZE/2, blockPos.z + BLOCK_SIZE/2)
                     );
                     if (newBlockDistance > MAX_BUILD_DISTANCE) return;
                     
                     let blockType = 3;
-                    if (newPos.y === 0) {
+                    if (blockPos.y === 0) {
                         blockType = 2;
-                    } else if (newPos.y > -4) {
+                    } else if (blockPos.y > -4) {
                         blockType = 1;
                     }
                     
-                    if (!getBlock(newPos.x, newPos.y, newPos.z)) {
-                        addBlock(newPos.x, newPos.y, newPos.z, blockType);
+                    if (!getBlock(blockPos.x, blockPos.y, blockPos.z)) {
+                        addBlock(blockPos.x, blockPos.y, blockPos.z, blockType);
                     }
                 }
             }
