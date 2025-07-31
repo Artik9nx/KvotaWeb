@@ -146,8 +146,6 @@
         const MAX_BUILD_DISTANCE = 5;
         
         const USE_INSTANCED_MESH = true;
-        const MERGE_GEOMETRY = true;
-        const USE_SIMPLE_COLLISION = true;
         
         let scene, camera, renderer, controls;
         let world = new Uint8Array(WORLD_WIDTH * WORLD_DEPTH * WORLD_HEIGHT);
@@ -182,18 +180,9 @@
         }
 
         function getRandomSpawnPoint() {
-            const x = Math.floor(Math.random() * WORLD_WIDTH) - WORLD_WIDTH/2;
-            const z = Math.floor(Math.random() * WORLD_DEPTH) - WORLD_DEPTH/2;
-            let y = 0;
-            
-            for (let i = WORLD_HEIGHT-1; i >= 0; i--) {
-                if (getBlock(x, i, z)) {
-                    y = i + 2;
-                    break;
-                }
-            }
-            
-            return { x, y, z };
+            const x = Math.floor(Math.random() * (WORLD_WIDTH - 20)) - WORLD_WIDTH/2 + 10;
+            const z = Math.floor(Math.random() * (WORLD_DEPTH - 20)) - WORLD_DEPTH/2 + 10;
+            return { x, y: 30, z };
         }
 
         function initializeGame() {
@@ -210,19 +199,56 @@
             renderer.setSize(854, 480);
             document.getElementById('gameContainer').appendChild(renderer.domElement);
             
-            setupLights();
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(100, 100, 50);
+            scene.add(directionalLight);
             
             const textureLoader = new THREE.TextureLoader();
-            stoneTexture = textureLoader.load('Res/stone.jpg');
-            dirtTexture = textureLoader.load('Res/dirt.jpg');
-            grassTexture = textureLoader.load('Res/grass.jpg');
+            stoneTexture = textureLoader.load('res/RD132211/stone.jpg');
+            dirtTexture = textureLoader.load('res/RD132211/dirt.jpg');
+            grassTexture = textureLoader.load('res/RD132211/grass.jpg');
             
             stoneTexture.wrapS = stoneTexture.wrapT = THREE.RepeatWrapping;
             dirtTexture.wrapS = dirtTexture.wrapT = THREE.RepeatWrapping;
             grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
             
-            generateOptimizedWorld();
-            setupControls();
+            for (let x = 0; x < WORLD_WIDTH; x++) {
+                for (let z = 0; z < WORLD_DEPTH; z++) {
+                    setBlock(x-WORLD_WIDTH/2, 0, z-WORLD_DEPTH/2, 2);
+                    for (let y = -1; y >= -3; y--) {
+                        setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 1);
+                    }
+                    for (let y = -4; y >= -WORLD_HEIGHT/2; y--) {
+                        setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3);
+                    }
+                }
+            }
+            updateChunks();
+            
+            controls = new THREE.PointerLockControls(camera, document.getElementById('gameContainer'));
+            
+            const exitButton = document.getElementById('exitButton');
+            
+            controls.addEventListener('lock', () => {
+                exitButton.style.display = 'none';
+            });
+            
+            controls.addEventListener('unlock', () => {
+                exitButton.style.display = 'block';
+            });
+            
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('mousedown', onMouseDown);
+            
+            exitButton.addEventListener('click', () => {
+                if (!controls.isLocked) {
+                    controls.lock();
+                }
+            });
             
             const spawnPoint = getRandomSpawnPoint();
             player.position.set(spawnPoint.x, spawnPoint.y, spawnPoint.z);
@@ -238,32 +264,6 @@
         function updateFPSCounter() {
             document.getElementById('fpsCounter').textContent = fps + ' FPS';
             fps = 0;
-        }
-        
-        function setupLights() {
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
-            
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-            directionalLight.position.set(100, 100, 50);
-            scene.add(directionalLight);
-        }
-        
-        function generateOptimizedWorld() {
-            for (let x = 0; x < WORLD_WIDTH; x++) {
-                for (let z = 0; z < WORLD_DEPTH; z++) {
-                    setBlock(x-WORLD_WIDTH/2, 0, z-WORLD_DEPTH/2, 2);
-                    
-                    for (let y = -1; y >= -3; y--) {
-                        setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 1);
-                    }
-                    
-                    for (let y = -4; y >= -WORLD_HEIGHT/2; y--) {
-                        setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3);
-                    }
-                }
-            }
-            updateChunks();
         }
         
         function setBlock(x, y, z, type) {
@@ -326,126 +326,59 @@
             const startZ = chunkZ * CHUNK_SIZE;
             
             const chunkGroup = new THREE.Group();
+            const blockTypes = {};
             
-            if (USE_INSTANCED_MESH) {
-                const blockTypes = {};
-                
-                for (let x = startX; x < startX + CHUNK_SIZE; x++) {
-                    for (let z = startZ; z < startZ + CHUNK_SIZE; z++) {
-                        for (let y = -WORLD_HEIGHT/2; y < WORLD_HEIGHT/2; y++) {
-                            const type = getBlock(x, y, z);
-                            if (type) {
-                                if (!blockTypes[type]) blockTypes[type] = [];
-                                blockTypes[type].push({x, y, z});
-                            }
+            for (let x = startX; x < startX + CHUNK_SIZE; x++) {
+                for (let z = startZ; z < startZ + CHUNK_SIZE; z++) {
+                    for (let y = -WORLD_HEIGHT/2; y < WORLD_HEIGHT/2; y++) {
+                        const type = getBlock(x, y, z);
+                        if (type) {
+                            if (!blockTypes[type]) blockTypes[type] = [];
+                            blockTypes[type].push({x, y, z});
                         }
                     }
                 }
+            }
+            
+            for (const type in blockTypes) {
+                if (blockTypes[type].length === 0) continue;
                 
-                for (const type in blockTypes) {
-                    if (blockTypes[type].length === 0) continue;
-                    
-                    const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                    let material;
-                    
-                    switch(parseInt(type)) {
-                        case 1: material = new THREE.MeshStandardMaterial({ map: dirtTexture }); break;
-                        case 2: 
-                            material = [
-                                new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                                new THREE.MeshStandardMaterial({ map: grassTexture }),
-                                new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                                new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                                new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                                new THREE.MeshStandardMaterial({ map: dirtTexture })
-                            ];
-                            break;
-                        case 3: material = new THREE.MeshStandardMaterial({ map: stoneTexture }); break;
-                        default: material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-                    }
-                    
-                    const mesh = new THREE.InstancedMesh(geometry, material, blockTypes[type].length);
-                    const matrix = new THREE.Matrix4();
-                    
-                    blockTypes[type].forEach((block, i) => {
-                        matrix.makeTranslation(
-                            block.x + BLOCK_SIZE/2, 
-                            block.y + BLOCK_SIZE/2, 
-                            block.z + BLOCK_SIZE/2
-                        );
-                        mesh.setMatrixAt(i, matrix);
-                    });
-                    
-                    chunkGroup.add(mesh);
-                }
-            } else if (MERGE_GEOMETRY) {
-                const geometries = {
-                    1: { positions: [], normals: [], uvs: [], indices: [], index: 0 },
-                    2: { positions: [], normals: [], uvs: [], indices: [], index: 0 },
-                    3: { positions: [], normals: [], uvs: [], indices: [], index: 0 }
-                };
+                const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                let material;
                 
-                for (let x = startX; x < startX + CHUNK_SIZE; x++) {
-                    for (let z = startZ; z < startZ + CHUNK_SIZE; z++) {
-                        for (let y = -WORLD_HEIGHT/2; y < WORLD_HEIGHT/2; y++) {
-                            const type = getBlock(x, y, z);
-                            if (type && geometries[type]) {
-                                addBlockToGeometry(geometries[type], x, y, z, type);
-                            }
-                        }
-                    }
+                switch(parseInt(type)) {
+                    case 1: material = new THREE.MeshStandardMaterial({ map: dirtTexture }); break;
+                    case 2: 
+                        material = [
+                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                            new THREE.MeshStandardMaterial({ map: grassTexture }),
+                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                            new THREE.MeshStandardMaterial({ map: dirtTexture })
+                        ];
+                        break;
+                    case 3: material = new THREE.MeshStandardMaterial({ map: stoneTexture }); break;
+                    default: material = new THREE.MeshStandardMaterial({ color: 0xffffff });
                 }
                 
-                for (const type in geometries) {
-                    if (geometries[type].positions.length === 0) continue;
-                    
-                    const geometry = new THREE.BufferGeometry();
-                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(geometries[type].positions, 3));
-                    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(geometries[type].normals, 3));
-                    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(geometries[type].uvs, 2));
-                    geometry.setIndex(geometries[type].indices);
-                    
-                    let material;
-                    switch(parseInt(type)) {
-                        case 1: material = new THREE.MeshStandardMaterial({ map: dirtTexture }); break;
-                        case 2: material = new THREE.MeshStandardMaterial({ map: grassTexture }); break;
-                        case 3: material = new THREE.MeshStandardMaterial({ map: stoneTexture }); break;
-                    }
-                    
-                    const mesh = new THREE.Mesh(geometry, material);
-                    chunkGroup.add(mesh);
-                }
+                const mesh = new THREE.InstancedMesh(geometry, material, blockTypes[type].length);
+                const matrix = new THREE.Matrix4();
+                
+                blockTypes[type].forEach((block, i) => {
+                    matrix.makeTranslation(
+                        block.x + BLOCK_SIZE/2, 
+                        block.y + BLOCK_SIZE/2, 
+                        block.z + BLOCK_SIZE/2
+                    );
+                    mesh.setMatrixAt(i, matrix);
+                });
+                
+                chunkGroup.add(mesh);
             }
             
             scene.add(chunkGroup);
             loadedChunks[chunkKey] = chunkGroup;
-        }
-        
-        function addBlockToGeometry(geometry, x, y, z, type) {
-        }
-        
-        function setupControls() {
-            controls = new THREE.PointerLockControls(camera, document.getElementById('gameContainer'));
-            
-            const exitButton = document.getElementById('exitButton');
-            
-            controls.addEventListener('lock', () => {
-                exitButton.style.display = 'none';
-            });
-            
-            controls.addEventListener('unlock', () => {
-                exitButton.style.display = 'block';
-            });
-            
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-            document.addEventListener('mousedown', onMouseDown);
-            
-            exitButton.addEventListener('click', () => {
-                if (!controls.isLocked) {
-                    controls.lock();
-                }
-            });
         }
         
         function onKeyDown(event) {
@@ -627,41 +560,22 @@
         }
         
         function checkCollision(position) {
-            if (USE_SIMPLE_COLLISION) {
-                const radius = player.radius;
-                const checkY = Math.floor(position.y);
-                
-                for (let yCheck = 0; yCheck <= player.height; yCheck += player.height) {
-                    const checkPosY = Math.floor(position.y + yCheck);
-                    
-                    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 2) {
-                        const checkX = Math.floor(position.x + Math.cos(angle) * radius);
-                        const checkZ = Math.floor(position.z + Math.sin(angle) * radius);
-                        
-                        if (getBlock(checkX, checkPosY, checkZ)) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            } else {
-                const radius = player.radius;
+            const radius = player.radius;
+            const checkY = Math.floor(position.y);
+            
+            for (let yCheck = 0; yCheck <= player.height; yCheck += player.height) {
+                const checkPosY = Math.floor(position.y + yCheck);
                 
                 for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 2) {
-                    const checkX = position.x + Math.cos(angle) * radius;
-                    const checkZ = position.z + Math.sin(angle) * radius;
+                    const checkX = Math.floor(position.x + Math.cos(angle) * radius);
+                    const checkZ = Math.floor(position.z + Math.sin(angle) * radius);
                     
-                    for (let yCheck = 0; yCheck <= player.height; yCheck += player.height) {
-                        const checkY = position.y + yCheck;
-                        
-                        if (getBlock(Math.floor(checkX), Math.floor(checkY), Math.floor(checkZ))) {
-                            return true;
-                        }
+                    if (getBlock(checkX, checkPosY, checkZ)) {
+                        return true;
                     }
                 }
-                
-                return false;
             }
+            return false;
         }
         
         function animate() {
