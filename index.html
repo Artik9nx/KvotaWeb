@@ -156,7 +156,7 @@
             <option value="RD132211.html">RD132211</option>
             <option value="VVVVVV.html">VVVVVV4k</option>
             <option value="Miners4k.html">Miners4k</option>
-            <option value="SonicRacer41k.html">SonicRacer4k</option>
+            <option value="SonicRacer4k.html">SonicRacer4k</option>
             <option value="Left4kDeadTest.html">Left4kDeadTest</option>
         </select>
         <button onclick="launchVersion()">LAUNCH</button>
@@ -179,7 +179,7 @@
                 fetch(selectedVersion)
                     .then(response => {
                         if (!response.ok) throw new Error('File not found');
-                        window.location.href = 'Loading.html?redirect=' + encodeURIComponent(selectedVersion);
+                        window.location.href = selectedVersion;
                     })
                     .catch(error => {
                         errorScreen.style.display = 'flex';
