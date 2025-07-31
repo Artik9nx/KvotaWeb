@@ -2,12 +2,12 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>RD132211 Minecraft</title>
+    <title>RD20091505 Minecraft</title>
     <style>
         body { 
             margin: 0; 
             padding: 0; 
-            background-image: url('Res/BackGround.png');
+            background-image: url('res/20091505/BackGround.png');
             background-repeat: repeat;
             font-family: Arial, sans-serif; 
             display: flex;
@@ -110,46 +110,16 @@
             max-width: 100%;
             max-height: 100%;
         }
-
-        #blockSelector {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-            z-index: 100;
-        }
-
-        .blockOption {
-            width: 40px;
-            height: 40px;
-            border: 2px solid white;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: all 0.2s;
-        }
-
-        .blockOption:hover, .blockOption.selected {
-            opacity: 1;
-            transform: scale(1.1);
-        }
     </style>
 </head>
 <body>
     <div id="gameContainer">
         <div id="splashScreen">
-            <img src="Res/Screen.png" alt="Loading Screen">
+            <img src="res/20091505/Screen.png" alt="Loading Screen">
         </div>
-        <img id="logo" src="Res/logo.png" alt="Logo" onclick="window.location.href='index.html'">
+        <img id="logo" src="res/20091505/logo.png" alt="Logo" onclick="window.location.href='index.html'">
         <div id="crosshair"></div>
         <div id="exitButton">Exit</div>
-        <div id="blockSelector">
-            <div class="blockOption selected" data-type="1" style="background-image: url('Res/Dirt.png'); background-size: cover;"></div>
-            <div class="blockOption" data-type="3" style="background-image: url('Res/Stone.png'); background-size: cover;"></div>
-            <div class="blockOption" data-type="4" style="background-image: url('Res/Planks.png'); background-size: cover;"></div>
-            <div class="blockOption" data-type="5" style="background-image: url('Res/Rock.png'); background-size: cover;"></div>
-        </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
@@ -159,7 +129,7 @@
         const RENDER_DISTANCE = 2;
         const WORLD_WIDTH = 256;
         const WORLD_DEPTH = 256;
-        const WORLD_HEIGHT = 64;
+        const WORLD_HEIGHT = 96; // Увеличенная высота мира
         const BLOCK_SIZE = 1;
         const MAX_BUILD_DISTANCE = 5;
         const MAX_BUILD_HEIGHT = WORLD_HEIGHT - 1;
@@ -227,12 +197,12 @@
             setupLights();
             
             const textureLoader = new THREE.TextureLoader();
-            dirtTexture = textureLoader.load('Res/Dirt.png');
-            grassTopTexture = textureLoader.load('Res/GrassTop.png');
-            grassSideTexture = textureLoader.load('Res/GrassSide.png');
-            stoneTexture = textureLoader.load('Res/Stone.png');
-            planksTexture = textureLoader.load('Res/Planks.png');
-            rockTexture = textureLoader.load('Res/Rock.png');
+            dirtTexture = textureLoader.load('res/20091505/Dirt.png');
+            grassTopTexture = textureLoader.load('res/20091505/GrassTop.png');
+            grassSideTexture = textureLoader.load('res/20091505/GrassSide.png');
+            stoneTexture = textureLoader.load('res/20091505/Stone.png');
+            planksTexture = textureLoader.load('res/20091505/Planks.png');
+            rockTexture = textureLoader.load('res/20091505/Rock.png');
             
             dirtTexture.wrapS = dirtTexture.wrapT = THREE.RepeatWrapping;
             grassTopTexture.wrapS = grassTopTexture.wrapT = THREE.RepeatWrapping;
@@ -243,7 +213,6 @@
             
             generateOptimizedWorld();
             setupControls();
-            setupBlockSelector();
             
             const spawnPoint = getRandomSpawnPoint();
             player.position.set(spawnPoint.x, spawnPoint.y, spawnPoint.z);
@@ -264,18 +233,24 @@
         }
         
         function generateOptimizedWorld() {
-            // Генерация ландшафта с использованием шума Перлина (упрощенная версия)
+            // Улучшенная генерация ландшафта с большей вариативностью по высоте
             for (let x = 0; x < WORLD_WIDTH; x++) {
                 for (let z = 0; z < WORLD_DEPTH; z++) {
-                    // Упрощенный "шум" для высоты
-                    const wx = (x - WORLD_WIDTH/2) / 20;
-                    const wz = (z - WORLD_DEPTH/2) / 20;
-                    const height = Math.floor(
-                        WORLD_HEIGHT/4 + 
-                        Math.sin(wx) * 5 + 
-                        Math.cos(wz * 0.5) * 5 +
-                        Math.sin(wx * 0.3 + wz * 0.3) * 3
+                    const wx = (x - WORLD_WIDTH/2) / 25;
+                    const wz = (z - WORLD_DEPTH/2) / 25;
+                    
+                    // Более сложный алгоритм генерации высоты
+                    let height = Math.floor(
+                        WORLD_HEIGHT/3 + 
+                        Math.sin(wx * 1.5) * 10 + 
+                        Math.cos(wz * 0.7) * 8 +
+                        Math.sin(wx * 0.3 + wz * 0.3) * 5 +
+                        Math.sin(wx * 0.1) * 15 +
+                        Math.cos(wz * 0.1) * 15
                     );
+                    
+                    // Ограничиваем высоту в пределах мира
+                    height = Math.max(10, Math.min(height, WORLD_HEIGHT - 10));
                     
                     // Генерация слоев
                     for (let y = 0; y < WORLD_HEIGHT; y++) {
@@ -290,7 +265,7 @@
                         } else if (y > height - 8) {
                             // Камень
                             setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3);
-                        } else {
+                        } else if (y > 10) {
                             // Случайные вкрапления камня и руды
                             const r = Math.random();
                             if (r < 0.05) {
@@ -300,22 +275,14 @@
                             } else {
                                 setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3); // Stone
                             }
+                        } else {
+                            // Нижний слой - камень
+                            setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3);
                         }
                     }
                 }
             }
             updateChunks();
-        }
-        
-        function setupBlockSelector() {
-            const options = document.querySelectorAll('.blockOption');
-            options.forEach(option => {
-                option.addEventListener('click', () => {
-                    options.forEach(opt => opt.classList.remove('selected'));
-                    option.classList.add('selected');
-                    selectedBlockType = parseInt(option.dataset.type);
-                });
-            });
         }
         
         function setBlock(x, y, z, type) {
@@ -531,21 +498,11 @@
                         controls.unlock();
                     }
                     break;
-                case 'Digit1': selectedBlockType = 1; updateBlockSelection(); break;
-                case 'Digit2': selectedBlockType = 3; updateBlockSelection(); break;
-                case 'Digit3': selectedBlockType = 4; updateBlockSelection(); break;
-                case 'Digit4': selectedBlockType = 5; updateBlockSelection(); break;
+                case 'Digit1': selectedBlockType = 1; break;
+                case 'Digit2': selectedBlockType = 3; break;
+                case 'Digit3': selectedBlockType = 4; break;
+                case 'Digit4': selectedBlockType = 5; break;
             }
-        }
-        
-        function updateBlockSelection() {
-            const options = document.querySelectorAll('.blockOption');
-            options.forEach(opt => {
-                opt.classList.remove('selected');
-                if (parseInt(opt.dataset.type) === selectedBlockType) {
-                    opt.classList.add('selected');
-                }
-            });
         }
         
         function onKeyUp(event) {
