@@ -433,14 +433,12 @@
                 blockPos.copy(intersect.point);
                 
                 if (event.button === 0) {
-                    // Удаление блока
                     blockPos.add(intersect.face.normal.multiplyScalar(-0.5));
                     blockPos.x = Math.floor(blockPos.x);
                     blockPos.y = Math.floor(blockPos.y);
                     blockPos.z = Math.floor(blockPos.z);
                     removeBlock(blockPos.x, blockPos.y, blockPos.z);
                 } else if (event.button === 2) {
-                    // Установка блока
                     blockPos.add(intersect.face.normal.multiplyScalar(0.5));
                     blockPos.x = Math.floor(blockPos.x);
                     blockPos.y = Math.floor(blockPos.y);
