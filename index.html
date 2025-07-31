@@ -207,7 +207,6 @@
                 const loadingScreen = document.getElementById('loadingScreen');
                 const loadingBar = document.getElementById('loadingBar');
                 
-                // Показываем экран загрузки с анимацией
                 loadingScreen.classList.add('active');
                 loadingBar.style.width = '0%';
                 
@@ -218,7 +217,6 @@
                     
                     if (progress >= 100) {
                         clearInterval(interval);
-                        // Плавно скрываем экран загрузки перед переходом
                         loadingScreen.classList.remove('active');
                         setTimeout(() => {
                             window.location.href = selectedVersion;
@@ -231,7 +229,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Убедимся, что экран загрузки скрыт при загрузке страницы
             document.getElementById('loadingScreen').style.display = 'none';
             
             document.getElementById('versionSelect').addEventListener('keydown', function(e) {
