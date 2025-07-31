@@ -125,22 +125,21 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
     <script>
-        // Увеличенные размеры мира
-        const CHUNK_SIZE = 16;
-        const RENDER_DISTANCE = 3; // Оптимизированное расстояние рендера
+        const CHUNK_SIZE = 32;
+        const RENDER_DISTANCE = 2;
         const WORLD_WIDTH = 128;
         const WORLD_DEPTH = 128;
         const WORLD_HEIGHT = 8;
         const BLOCK_SIZE = 1;
         const MAX_BUILD_DISTANCE = 5;
-        const MAX_BUILD_HEIGHT = WORLD_HEIGHT;
         
         let scene, camera, renderer, controls;
-        let world = {};
+        let world = new Uint8Array(WORLD_WIDTH * WORLD_DEPTH * WORLD_HEIGHT);
         let loadedChunks = {};
         let raycaster = new THREE.Raycaster();
         let clock = new THREE.Clock();
         let stoneTexture, dirtTexture, grassTexture;
+        let lastChunkX = Infinity, lastChunkZ = Infinity;
 
         let player = {
             position: new THREE.Vector3(),
@@ -168,7 +167,6 @@
             const z = Math.floor(Math.random() * WORLD_DEPTH) - WORLD_DEPTH/2;
             let y = 0;
             
-            // Ищем верхний блок в этой колонке
             for (let i = WORLD_HEIGHT-1; i >= 0; i--) {
                 if (getBlock(x, i, z)) {
                     y = i + 2;
@@ -185,15 +183,13 @@
             
             camera = new THREE.PerspectiveCamera(75, 854/480, 0.1, 1000);
             
-            const gameContainer = document.getElementById('gameContainer');
-            
             renderer = new THREE.WebGLRenderer({ 
                 antialias: false,
                 powerPreference: "high-performance"
             });
             renderer.setPixelRatio(1);
             renderer.setSize(854, 480);
-            gameContainer.appendChild(renderer.domElement);
+            document.getElementById('gameContainer').appendChild(renderer.domElement);
             
             setupLights();
             
@@ -206,7 +202,6 @@
             dirtTexture.wrapS = dirtTexture.wrapT = THREE.RepeatWrapping;
             grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
             
-            // Оптимизированная генерация мира
             generateOptimizedWorld();
             setupControls();
             
@@ -229,72 +224,47 @@
         }
         
         function generateOptimizedWorld() {
-            world = {};
-            loadedChunks = {};
-            
-            // Генерируем мир слоями с оптимизацией
-            for (let x = -WORLD_WIDTH/2; x < WORLD_WIDTH/2; x++) {
-                for (let z = -WORLD_DEPTH/2; z < WORLD_DEPTH/2; z++) {
-                    // Верхний слой - трава
-                    setBlock(x, 0, z, 'grass');
-                    
-                    // Нижние слои - земля и камень
+            for (let x = 0; x < WORLD_WIDTH; x++) {
+                for (let z = 0; z < WORLD_DEPTH; z++) {
+                    setBlock(x-WORLD_WIDTH/2, 0, z-WORLD_DEPTH/2, 2);
                     for (let y = -1; y >= -3; y--) {
-                        setBlock(x, y, z, 'dirt');
+                        setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 1);
                     }
                     for (let y = -4; y >= -5; y--) {
-                        setBlock(x, y, z, 'stone');
+                        setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3);
                     }
                 }
             }
-            
-            // Загружаем только чанки вокруг игрока
             updateChunks();
         }
         
         function setBlock(x, y, z, type) {
-            const key = `${x},${y},${z}`;
-            world[key] = { type: type };
+            x += WORLD_WIDTH/2;
+            z += WORLD_DEPTH/2;
+            y += 5;
+            if (x >= 0 && x < WORLD_WIDTH && z >= 0 && z < WORLD_DEPTH && y >= 0 && y < WORLD_HEIGHT) {
+                world[x + z * WORLD_WIDTH + y * WORLD_WIDTH * WORLD_DEPTH] = type;
+            }
         }
         
-        function saveWorld() {
-            const worldData = {};
-            for (const key in world) {
-                worldData[key] = world[key].type;
+        function getBlock(x, y, z) {
+            x += WORLD_WIDTH/2;
+            z += WORLD_DEPTH/2;
+            y += 5;
+            if (x >= 0 && x < WORLD_WIDTH && z >= 0 && z < WORLD_DEPTH && y >= 0 && y < WORLD_HEIGHT) {
+                return world[x + z * WORLD_WIDTH + y * WORLD_WIDTH * WORLD_DEPTH];
             }
-            localStorage.setItem('minecraftWorld', JSON.stringify(worldData));
-        }
-        
-        function loadWorld() {
-            const savedWorld = localStorage.getItem('minecraftWorld');
-            if (savedWorld) {
-                // Очищаем текущий мир
-                for (const chunkKey in loadedChunks) {
-                    loadedChunks[chunkKey].forEach(mesh => {
-                        scene.remove(mesh);
-                    });
-                }
-                world = {};
-                loadedChunks = {};
-                
-                const worldData = JSON.parse(savedWorld);
-                
-                // Загружаем данные блоками
-                for (const key in worldData) {
-                    const [x, y, z] = key.split(',').map(Number);
-                    setBlock(x, y, z, worldData[key]);
-                }
-                
-                // Обновляем чанки
-                updateChunks();
-            }
+            return 0;
         }
         
         function updateChunks() {
             const playerChunkX = Math.floor(player.position.x / CHUNK_SIZE);
             const playerChunkZ = Math.floor(player.position.z / CHUNK_SIZE);
             
-            // Удаляем далекие чанки
+            if (playerChunkX === lastChunkX && playerChunkZ === lastChunkZ) return;
+            lastChunkX = playerChunkX;
+            lastChunkZ = playerChunkZ;
+            
             for (const chunkKey in loadedChunks) {
                 const [chunkX, chunkZ] = chunkKey.split(',').map(Number);
                 const distance = Math.max(
@@ -303,14 +273,11 @@
                 );
                 
                 if (distance > RENDER_DISTANCE) {
-                    loadedChunks[chunkKey].forEach(mesh => {
-                        scene.remove(mesh);
-                    });
+                    scene.remove(loadedChunks[chunkKey]);
                     delete loadedChunks[chunkKey];
                 }
             }
             
-            // Загружаем новые чанки
             for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
                 for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
                     const chunkX = playerChunkX + x;
@@ -326,40 +293,34 @@
         
         function loadChunk(chunkX, chunkZ) {
             const chunkKey = `${chunkX},${chunkZ}`;
-            loadedChunks[chunkKey] = [];
-            
             const startX = chunkX * CHUNK_SIZE;
             const startZ = chunkZ * CHUNK_SIZE;
-            const endX = startX + CHUNK_SIZE;
-            const endZ = startZ + CHUNK_SIZE;
             
             const meshes = {};
             
-            // Собираем все блоки в чанке
-            for (let x = startX; x < endX; x++) {
-                for (let z = startZ; z < endZ; z++) {
+            for (let x = startX; x < startX + CHUNK_SIZE; x++) {
+                for (let z = startZ; z < startZ + CHUNK_SIZE; z++) {
                     for (let y = -5; y < WORLD_HEIGHT; y++) {
-                        const key = `${x},${y},${z}`;
-                        if (world[key]) {
-                            const block = world[key];
-                            if (!meshes[block.type]) {
-                                meshes[block.type] = [];
-                            }
-                            meshes[block.type].push({x, y, z});
+                        const type = getBlock(x, y, z);
+                        if (type) {
+                            if (!meshes[type]) meshes[type] = [];
+                            meshes[type].push({x, y, z});
                         }
                     }
                 }
             }
             
-            // Создаем меши для каждого типа блока
-            Object.keys(meshes).forEach(type => {
-                if (meshes[type].length === 0) return;
+            const chunkGroup = new THREE.Group();
+            
+            for (const type in meshes) {
+                if (meshes[type].length === 0) continue;
                 
                 const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
                 let material;
                 
-                switch(type) {
-                    case 'grass':
+                switch(parseInt(type)) {
+                    case 1: material = new THREE.MeshStandardMaterial({ map: dirtTexture }); break;
+                    case 2: 
                         material = [
                             new THREE.MeshStandardMaterial({ map: dirtTexture }),
                             new THREE.MeshStandardMaterial({ map: grassTexture }),
@@ -369,20 +330,13 @@
                             new THREE.MeshStandardMaterial({ map: dirtTexture })
                         ];
                         break;
-                    case 'dirt':
-                        material = new THREE.MeshStandardMaterial({ map: dirtTexture });
-                        break;
-                    case 'stone':
-                        material = new THREE.MeshStandardMaterial({ map: stoneTexture });
-                        break;
-                    default:
-                        material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                    case 3: material = new THREE.MeshStandardMaterial({ map: stoneTexture }); break;
+                    default: material = new THREE.MeshStandardMaterial({ color: 0xffffff });
                 }
                 
                 const mesh = new THREE.InstancedMesh(geometry, material, meshes[type].length);
-                mesh.count = meshes[type].length;
-                
                 const matrix = new THREE.Matrix4();
+                
                 meshes[type].forEach((block, i) => {
                     matrix.makeTranslation(
                         block.x + BLOCK_SIZE/2, 
@@ -392,9 +346,11 @@
                     mesh.setMatrixAt(i, matrix);
                 });
                 
-                scene.add(mesh);
-                loadedChunks[chunkKey].push(mesh);
-            });
+                chunkGroup.add(mesh);
+            }
+            
+            scene.add(chunkGroup);
+            loadedChunks[chunkKey] = chunkGroup;
         }
         
         function setupControls() {
@@ -448,12 +404,6 @@
                         controls.unlock();
                     }
                     break;
-                case 'F1': 
-                    saveWorld();
-                    break;
-                case 'F2': 
-                    loadWorld();
-                    break;
             }
         }
         
@@ -473,12 +423,10 @@
             }
             
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            
-            const intersects = raycaster.intersectObjects(scene.children);
+            const intersects = raycaster.intersectObjects(scene.children, true);
             
             if (intersects.length > 0) {
                 const intersect = intersects[0];
-                
                 if (intersect.distance > MAX_BUILD_DISTANCE) return;
                 
                 const blockPos = intersect.point.clone();
@@ -496,7 +444,7 @@
                     
                     const newPos = blockPos.clone().add(normal);
                     
-                    if (Math.abs(newPos.x) > WORLD_WIDTH/2 || Math.abs(newPos.z) > WORLD_DEPTH/2 || newPos.y >= MAX_BUILD_HEIGHT || newPos.y < -5) {
+                    if (Math.abs(newPos.x) > WORLD_WIDTH/2 || Math.abs(newPos.z) > WORLD_DEPTH/2 || newPos.y >= WORLD_HEIGHT-5 || newPos.y < -5) {
                         return;
                     }
                     
@@ -505,66 +453,44 @@
                     );
                     if (newBlockDistance > MAX_BUILD_DISTANCE) return;
                     
-                    let blockType = 'stone';
+                    let blockType = 3;
                     if (newPos.y === 0) {
-                        blockType = 'grass';
+                        blockType = 2;
                     } else if (newPos.y > -4) {
-                        blockType = 'dirt';
+                        blockType = 1;
                     }
                     
                     if (!getBlock(newPos.x, newPos.y, newPos.z)) {
                         addBlock(newPos.x, newPos.y, newPos.z, blockType);
-                        saveWorld();
                     }
                 }
             }
         }
         
         function addBlock(x, y, z, type) {
-            const key = `${x},${y},${z}`;
-            if (world[key]) return;
-            
             setBlock(x, y, z, type);
-            
             const chunkX = Math.floor(x / CHUNK_SIZE);
             const chunkZ = Math.floor(z / CHUNK_SIZE);
             const chunkKey = `${chunkX},${chunkZ}`;
             
-            // Перезагружаем чанк
             if (loadedChunks[chunkKey]) {
-                loadedChunks[chunkKey].forEach(mesh => {
-                    scene.remove(mesh);
-                });
+                scene.remove(loadedChunks[chunkKey]);
                 delete loadedChunks[chunkKey];
                 loadChunk(chunkX, chunkZ);
             }
         }
         
         function removeBlock(x, y, z) {
-            const key = `${x},${y},${z}`;
-            if (!world[key]) return;
-            
-            delete world[key];
-            
+            setBlock(x, y, z, 0);
             const chunkX = Math.floor(x / CHUNK_SIZE);
             const chunkZ = Math.floor(z / CHUNK_SIZE);
             const chunkKey = `${chunkX},${chunkZ}`;
             
-            // Перезагружаем чанк
             if (loadedChunks[chunkKey]) {
-                loadedChunks[chunkKey].forEach(mesh => {
-                    scene.remove(mesh);
-                });
+                scene.remove(loadedChunks[chunkKey]);
                 delete loadedChunks[chunkKey];
                 loadChunk(chunkX, chunkZ);
             }
-            
-            saveWorld();
-        }
-        
-        function getBlock(x, y, z) {
-            const key = `${x},${y},${z}`;
-            return world[key];
         }
         
         function updatePlayer(delta) {
@@ -576,21 +502,14 @@
             const sideDirection = new THREE.Vector3();
             sideDirection.crossVectors(new THREE.Vector3(0, 1, 0), direction);
             
-            const forwardMovement = (Number(player.moveForward) - Number(player.moveBackward));
-            const sideMovement = (Number(player.moveLeft)) - (Number(player.moveRight));
-            
-            player.velocity.x = (direction.x * forwardMovement + sideDirection.x * sideMovement) * player.speed;
-            player.velocity.z = (direction.z * forwardMovement + sideDirection.z * sideMovement) * player.speed;
+            player.velocity.x = (direction.x * (Number(player.moveForward) - Number(player.moveBackward)) + sideDirection.x * (Number(player.moveLeft) - Number(player.moveRight))) * player.speed;
+            player.velocity.z = (direction.z * (Number(player.moveForward) - Number(player.moveBackward)) + sideDirection.z * (Number(player.moveLeft) - Number(player.moveRight))) * player.speed;
             
             player.velocity.y -= 20 * delta;
             if (player.velocity.y < -20) player.velocity.y = -20;
             
-            const deltaX = player.velocity.x * delta;
-            const deltaY = player.velocity.y * delta;
-            const deltaZ = player.velocity.z * delta;
-            
             const newPos = player.position.clone();
-            newPos.x += deltaX;
+            newPos.x += player.velocity.x * delta;
             
             if (Math.abs(newPos.x) > WORLD_WIDTH/2) {
                 newPos.x = Math.sign(newPos.x) * (WORLD_WIDTH/2 - 1);
@@ -604,17 +523,17 @@
             }
             
             newPos.copy(player.position);
-            newPos.y += deltaY;
+            newPos.y += player.velocity.y * delta;
             
             if (!checkCollision(newPos)) {
                 player.position.y = newPos.y;
             } else {
-                if (deltaY < 0) player.canJump = true;
+                if (player.velocity.y < 0) player.canJump = true;
                 player.velocity.y = 0;
             }
             
             newPos.copy(player.position);
-            newPos.z += deltaZ;
+            newPos.z += player.velocity.z * delta;
             
             if (Math.abs(newPos.z) > WORLD_DEPTH/2) {
                 newPos.z = Math.sign(newPos.z) * (WORLD_DEPTH/2 - 1);
@@ -635,22 +554,15 @@
         
         function checkCollision(position) {
             const radius = player.radius;
-            const height = player.height;
             
-            // Проверяем только 4 точки вокруг игрока (оптимизация)
             for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 2) {
                 const checkX = position.x + Math.cos(angle) * radius;
                 const checkZ = position.z + Math.sin(angle) * radius;
                 
-                // Проверяем только ноги и голову (оптимизация)
-                for (let yCheck = 0; yCheck <= height; yCheck += height) {
+                for (let yCheck = 0; yCheck <= player.height; yCheck += player.height) {
                     const checkY = position.y + yCheck;
                     
-                    const blockX = Math.floor(checkX);
-                    const blockY = Math.floor(checkY);
-                    const blockZ = Math.floor(checkZ);
-                    
-                    if (getBlock(blockX, blockY, blockZ)) {
+                    if (getBlock(Math.floor(checkX), Math.floor(checkY), Math.floor(checkZ))) {
                         return true;
                     }
                 }
@@ -661,11 +573,15 @@
         
         function animate() {
             requestAnimationFrame(animate);
-            
-            const delta = clock.getDelta();
+            const delta = Math.min(clock.getDelta(), 0.1);
             
             updatePlayer(delta);
-            updateChunks();
+            
+            const playerChunkX = Math.floor(player.position.x / CHUNK_SIZE);
+            const playerChunkZ = Math.floor(player.position.z / CHUNK_SIZE);
+            if (playerChunkX !== lastChunkX || playerChunkZ !== lastChunkZ) {
+                updateChunks();
+            }
             
             renderer.render(scene, camera);
         }
