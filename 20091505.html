@@ -7,7 +7,7 @@
         body { 
             margin: 0; 
             padding: 0; 
-            background-image: url('res/20091505/BackGround.png');
+            background-image: url('res/BackGround.png');
             background-repeat: repeat;
             font-family: Arial, sans-serif; 
             display: flex;
@@ -115,9 +115,9 @@
 <body>
     <div id="gameContainer">
         <div id="splashScreen">
-            <img src="res/20091505/Screen.png" alt="Loading Screen">
+            <img src="res/Screen.png" alt="Loading Screen">
         </div>
-        <img id="logo" src="res/20091505/logo.png" alt="Logo" onclick="window.location.href='index.html'">
+        <img id="logo" src="res/logo.png" alt="Logo" onclick="window.location.href='index.html'">
         <div id="crosshair"></div>
         <div id="exitButton">Exit</div>
     </div>
@@ -129,7 +129,7 @@
         const RENDER_DISTANCE = 2;
         const WORLD_WIDTH = 256;
         const WORLD_DEPTH = 256;
-        const WORLD_HEIGHT = 96; // Увеличенная высота мира
+        const WORLD_HEIGHT = 96;
         const BLOCK_SIZE = 1;
         const MAX_BUILD_DISTANCE = 5;
         const MAX_BUILD_HEIGHT = WORLD_HEIGHT - 1;
@@ -233,13 +233,11 @@
         }
         
         function generateOptimizedWorld() {
-            // Улучшенная генерация ландшафта с большей вариативностью по высоте
             for (let x = 0; x < WORLD_WIDTH; x++) {
                 for (let z = 0; z < WORLD_DEPTH; z++) {
                     const wx = (x - WORLD_WIDTH/2) / 25;
                     const wz = (z - WORLD_DEPTH/2) / 25;
                     
-                    // Более сложный алгоритм генерации высоты
                     let height = Math.floor(
                         WORLD_HEIGHT/3 + 
                         Math.sin(wx * 1.5) * 10 + 
@@ -249,34 +247,27 @@
                         Math.cos(wz * 0.1) * 15
                     );
                     
-                    // Ограничиваем высоту в пределах мира
                     height = Math.max(10, Math.min(height, WORLD_HEIGHT - 10));
                     
-                    // Генерация слоев
                     for (let y = 0; y < WORLD_HEIGHT; y++) {
                         if (y > height) continue;
                         
                         if (y === height) {
-                            // Поверхность - трава
                             setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 2);
                         } else if (y > height - 4) {
-                            // Верхние слои - земля
                             setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 1);
                         } else if (y > height - 8) {
-                            // Камень
                             setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3);
                         } else if (y > 10) {
-                            // Случайные вкрапления камня и руды
                             const r = Math.random();
                             if (r < 0.05) {
-                                setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 5); // Rock
+                                setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 5);
                             } else if (r < 0.1) {
-                                setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 4); // Planks
+                                setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 4);
                             } else {
-                                setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3); // Stone
+                                setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3);
                             }
                         } else {
-                            // Нижний слой - камень
                             setBlock(x-WORLD_WIDTH/2, y, z-WORLD_DEPTH/2, 3);
                         }
                     }
@@ -291,7 +282,6 @@
             if (x >= 0 && x < WORLD_WIDTH && z >= 0 && z < WORLD_DEPTH && y >= 0 && y < WORLD_HEIGHT) {
                 world[x + z * WORLD_WIDTH + y * WORLD_WIDTH * WORLD_DEPTH] = type;
                 
-                // Если ставим блок земли рядом с травой, запускаем таймер превращения
                 if (type === 1) {
                     checkForGrassNearby(x - WORLD_WIDTH/2, y, z - WORLD_DEPTH/2);
                 }
@@ -301,7 +291,6 @@
         function checkForGrassNearby(x, y, z) {
             const key = `${x},${y},${z}`;
             
-            // Проверяем соседние блоки на наличие травы
             const hasGrassNearby = 
                 getBlock(x+1, y, z) === 2 ||
                 getBlock(x-1, y, z) === 2 ||
@@ -311,11 +300,10 @@
                 getBlock(x, y-1, z) === 2;
             
             if (hasGrassNearby && !grassTimers[key]) {
-                // Устанавливаем случайный таймер от 3 до 6 секунд
                 const delay = 3000 + Math.random() * 3000;
                 grassTimers[key] = setTimeout(() => {
-                    if (getBlock(x, y, z) === 1) { // Проверяем, что блок все еще земля
-                        setBlock(x, y, z, 2); // Превращаем в траву
+                    if (getBlock(x, y, z) === 1) {
+                        setBlock(x, y, z, 2);
                         const chunkX = Math.floor(x / CHUNK_SIZE);
                         const chunkZ = Math.floor(z / CHUNK_SIZE);
                         const chunkKey = `${chunkX},${chunkZ}`;
@@ -402,26 +390,26 @@
                 let material;
                 
                 switch(parseInt(type)) {
-                    case 1: // Dirt
+                    case 1:
                         material = new THREE.MeshStandardMaterial({ map: dirtTexture });
                         break;
-                    case 2: // Grass
+                    case 2:
                         material = [
-                            new THREE.MeshStandardMaterial({ map: grassSideTexture }), // right
-                            new THREE.MeshStandardMaterial({ map: grassSideTexture }), // left
-                            new THREE.MeshStandardMaterial({ map: grassTopTexture }), // top
-                            new THREE.MeshStandardMaterial({ map: dirtTexture }), // bottom
-                            new THREE.MeshStandardMaterial({ map: grassSideTexture }), // front
-                            new THREE.MeshStandardMaterial({ map: grassSideTexture }) // back
+                            new THREE.MeshStandardMaterial({ map: grassSideTexture }),
+                            new THREE.MeshStandardMaterial({ map: grassSideTexture }),
+                            new THREE.MeshStandardMaterial({ map: grassTopTexture }),
+                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                            new THREE.MeshStandardMaterial({ map: grassSideTexture }),
+                            new THREE.MeshStandardMaterial({ map: grassSideTexture })
                         ];
                         break;
-                    case 3: // Stone
+                    case 3:
                         material = new THREE.MeshStandardMaterial({ map: stoneTexture });
                         break;
-                    case 4: // Planks
+                    case 4:
                         material = new THREE.MeshStandardMaterial({ map: planksTexture });
                         break;
-                    case 5: // Rock
+                    case 5:
                         material = new THREE.MeshStandardMaterial({ map: rockTexture });
                         break;
                     default:
@@ -531,7 +519,6 @@
                 blockPos.copy(intersect.point);
                 
                 if (event.button === 0) {
-                    // Удаление блока
                     blockPos.add(intersect.face.normal.multiplyScalar(-0.5));
                     blockPos.x = Math.floor(blockPos.x);
                     blockPos.y = Math.floor(blockPos.y);
@@ -540,7 +527,6 @@
                         removeBlock(blockPos.x, blockPos.y, blockPos.z);
                     }
                 } else if (event.button === 2) {
-                    // Установка блока
                     blockPos.add(intersect.face.normal.multiplyScalar(0.5));
                     blockPos.x = Math.floor(blockPos.x);
                     blockPos.y = Math.floor(blockPos.y);
