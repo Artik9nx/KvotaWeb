@@ -203,7 +203,7 @@
             dirtTexture.wrapS = dirtTexture.wrapT = THREE.RepeatWrapping;
             grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
             
-            loadWorld();
+            generateLayeredWorld();
             setupControls();
             
             const spawnPoint = getRandomSpawnPoint();
@@ -225,6 +225,9 @@
         }
         
         function generateLayeredWorld() {
+            world = {};
+            loadedChunks = {};
+            
             const positions = [];
             
             for (let x = -WORLD_WIDTH/2; x < WORLD_WIDTH/2; x++) {
@@ -238,7 +241,6 @@
             }
             
             addBlocksBatch(positions);
-            saveWorld();
         }
         
         function addBlocksBatch(blocks) {
@@ -293,7 +295,8 @@
                     
                     world[key] = { 
                         type: type,
-                        meshIndex: i
+                        meshIndex: i,
+                        meshRef: mesh
                     };
                     
                     const chunkX = Math.floor(block.x / CHUNK_SIZE);
@@ -321,6 +324,14 @@
         function loadWorld() {
             const savedWorld = localStorage.getItem('minecraftWorld');
             if (savedWorld) {
+                for (const chunkKey in loadedChunks) {
+                    loadedChunks[chunkKey].forEach(mesh => {
+                        scene.remove(mesh);
+                    });
+                }
+                world = {};
+                loadedChunks = {};
+                
                 const worldData = JSON.parse(savedWorld);
                 const blocksToAdd = [];
                 
@@ -330,8 +341,6 @@
                 }
                 
                 addBlocksBatch(blocksToAdd);
-            } else {
-                generateLayeredWorld();
             }
         }
         
@@ -357,7 +366,7 @@
             for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
                 for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
                     const chunkX = playerChunkX + x;
-                    const chunkZ = playerChunkX + z;
+                    const chunkZ = playerChunkZ + z;
                     const chunkKey = `${chunkX},${chunkZ}`;
                     
                     if (!loadedChunks[chunkKey]) {
@@ -483,6 +492,12 @@
                         controls.unlock();
                     }
                     break;
+                case 'F1': 
+                    saveWorld();
+                    break;
+                case 'F2': 
+                    loadWorld();
+                    break;
             }
         }
         
@@ -560,7 +575,9 @@
             };
             
             if (loadedChunks[chunkKey]) {
-                scene.remove(loadedChunks[chunkKey]);
+                loadedChunks[chunkKey].forEach(mesh => {
+                    scene.remove(mesh);
+                });
                 delete loadedChunks[chunkKey];
                 loadChunk(chunkX, chunkZ);
             }
@@ -568,21 +585,23 @@
         
         function removeBlock(x, y, z) {
             const key = `${x},${y},${z}`;
-            if (world[key]) {
-                delete world[key];
-                
-                const chunkX = Math.floor(x / CHUNK_SIZE);
-                const chunkZ = Math.floor(z / CHUNK_SIZE);
-                const chunkKey = `${chunkX},${chunkZ}`;
-                
-                if (loadedChunks[chunkKey]) {
-                    scene.remove(loadedChunks[chunkKey]);
-                    delete loadedChunks[chunkKey];
-                    loadChunk(chunkX, chunkZ);
-                }
-                
-                saveWorld();
+            if (!world[key]) return;
+            
+            const chunkX = Math.floor(x / CHUNK_SIZE);
+            const chunkZ = Math.floor(z / CHUNK_SIZE);
+            const chunkKey = `${chunkX},${chunkZ}`;
+            
+            delete world[key];
+            
+            if (loadedChunks[chunkKey]) {
+                loadedChunks[chunkKey].forEach(mesh => {
+                    scene.remove(mesh);
+                });
+                delete loadedChunks[chunkKey];
+                loadChunk(chunkX, chunkZ);
             }
+            
+            saveWorld();
         }
         
         function getBlock(x, y, z) {
