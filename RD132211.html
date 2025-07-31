@@ -148,7 +148,7 @@
             moveLeft: false,
             moveRight: false,
             canJump: false,
-            height: 2.0,
+            height: 1.75,
             radius: 0.3,
             speed: 4.0,
             jumpHeight: 8
@@ -276,25 +276,24 @@
                         material = new THREE.MeshStandardMaterial({ color: 0xffffff });
                 }
                 
-                blockTypes[type].forEach(block => {
+                const mesh = new THREE.InstancedMesh(geometry, material, blockTypes[type].length);
+                mesh.count = blockTypes[type].length;
+                
+                const matrix = new THREE.Matrix4();
+                blockTypes[type].forEach((block, i) => {
                     const key = `${block.x},${block.y},${block.z}`;
                     if (world[key]) return;
                     
-                    const cube = Array.isArray(material) 
-                        ? new THREE.Mesh(geometry, material)
-                        : new THREE.Mesh(geometry, material);
-                    
-                    cube.position.set(
+                    matrix.makeTranslation(
                         block.x + BLOCK_SIZE/2, 
                         block.y + BLOCK_SIZE/2, 
                         block.z + BLOCK_SIZE/2
                     );
-                    
-                    scene.add(cube);
+                    mesh.setMatrixAt(i, matrix);
                     
                     world[key] = { 
-                        mesh: cube, 
-                        type: type
+                        type: type,
+                        meshIndex: i
                     };
                     
                     const chunkX = Math.floor(block.x / CHUNK_SIZE);
@@ -304,8 +303,10 @@
                     if (!loadedChunks[chunkKey]) {
                         loadedChunks[chunkKey] = [];
                     }
-                    loadedChunks[chunkKey].push(cube);
+                    loadedChunks[chunkKey].push(mesh);
                 });
+                
+                scene.add(mesh);
             });
         }
         
@@ -346,8 +347,8 @@
                 );
                 
                 if (distance > RENDER_DISTANCE) {
-                    loadedChunks[chunkKey].forEach(block => {
-                        scene.remove(block);
+                    loadedChunks[chunkKey].forEach(mesh => {
+                        scene.remove(mesh);
                     });
                     delete loadedChunks[chunkKey];
                 }
@@ -356,7 +357,7 @@
             for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
                 for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
                     const chunkX = playerChunkX + x;
-                    const chunkZ = playerChunkZ + z;
+                    const chunkZ = playerChunkX + z;
                     const chunkKey = `${chunkX},${chunkZ}`;
                     
                     if (!loadedChunks[chunkKey]) {
@@ -375,14 +376,60 @@
             const endX = startX + CHUNK_SIZE;
             const endZ = startZ + CHUNK_SIZE;
             
+            const meshes = {};
+            
             for (const key in world) {
                 const [x, y, z] = key.split(',').map(Number);
                 if (x >= startX && x < endX && z >= startZ && z < endZ) {
                     const block = world[key];
-                    scene.add(block.mesh);
-                    loadedChunks[chunkKey].push(block.mesh);
+                    if (!meshes[block.type]) {
+                        meshes[block.type] = [];
+                    }
+                    meshes[block.type].push({x, y, z});
                 }
             }
+            
+            Object.keys(meshes).forEach(type => {
+                const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                let material;
+                
+                switch(type) {
+                    case 'grass':
+                        material = [
+                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                            new THREE.MeshStandardMaterial({ map: grassTexture }),
+                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                            new THREE.MeshStandardMaterial({ map: dirtTexture }),
+                            new THREE.MeshStandardMaterial({ map: dirtTexture })
+                        ];
+                        break;
+                    case 'dirt':
+                        material = new THREE.MeshStandardMaterial({ map: dirtTexture });
+                        break;
+                    case 'stone':
+                        material = new THREE.MeshStandardMaterial({ map: stoneTexture });
+                        break;
+                    default:
+                        material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                }
+                
+                const mesh = new THREE.InstancedMesh(geometry, material, meshes[type].length);
+                mesh.count = meshes[type].length;
+                
+                const matrix = new THREE.Matrix4();
+                meshes[type].forEach((block, i) => {
+                    matrix.makeTranslation(
+                        block.x + BLOCK_SIZE/2, 
+                        block.y + BLOCK_SIZE/2, 
+                        block.z + BLOCK_SIZE/2
+                    );
+                    mesh.setMatrixAt(i, matrix);
+                });
+                
+                scene.add(mesh);
+                loadedChunks[chunkKey].push(mesh);
+            });
         }
         
         function setupControls() {
@@ -456,14 +503,14 @@
             
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
             
-            const intersects = raycaster.intersectObjects(Object.values(world).map(b => b.mesh));
+            const intersects = raycaster.intersectObjects(scene.children);
             
             if (intersects.length > 0) {
                 const intersect = intersects[0];
                 
                 if (intersect.distance > MAX_BUILD_DISTANCE) return;
                 
-                const blockPos = intersect.object.position.clone();
+                const blockPos = intersect.point.clone();
                 blockPos.x = Math.floor(blockPos.x - BLOCK_SIZE/2);
                 blockPos.y = Math.floor(blockPos.y - BLOCK_SIZE/2);
                 blockPos.z = Math.floor(blockPos.z - BLOCK_SIZE/2);
@@ -504,62 +551,36 @@
             const key = `${x},${y},${z}`;
             if (world[key]) return;
             
-            const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-            let material;
-            
-            switch(type) {
-                case 'grass':
-                    material = [
-                        new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                        new THREE.MeshStandardMaterial({ map: grassTexture }),
-                        new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                        new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                        new THREE.MeshStandardMaterial({ map: dirtTexture }),
-                        new THREE.MeshStandardMaterial({ map: dirtTexture })
-                    ];
-                    break;
-                case 'dirt':
-                    material = new THREE.MeshStandardMaterial({ map: dirtTexture });
-                    break;
-                case 'stone':
-                    material = new THREE.MeshStandardMaterial({ map: stoneTexture });
-                    break;
-                default:
-                    material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-            }
-            
-            const cube = Array.isArray(material) 
-                ? new THREE.Mesh(geometry, material)
-                : new THREE.Mesh(geometry, material);
-            
-            cube.position.set(
-                x + BLOCK_SIZE/2, 
-                y + BLOCK_SIZE/2, 
-                z + BLOCK_SIZE/2
-            );
-            
-            scene.add(cube);
-            
-            world[key] = { 
-                mesh: cube, 
-                type: type
-            };
-            
             const chunkX = Math.floor(x / CHUNK_SIZE);
             const chunkZ = Math.floor(z / CHUNK_SIZE);
             const chunkKey = `${chunkX},${chunkZ}`;
             
-            if (!loadedChunks[chunkKey]) {
-                loadedChunks[chunkKey] = [];
+            world[key] = { 
+                type: type
+            };
+            
+            if (loadedChunks[chunkKey]) {
+                scene.remove(loadedChunks[chunkKey]);
+                delete loadedChunks[chunkKey];
+                loadChunk(chunkX, chunkZ);
             }
-            loadedChunks[chunkKey].push(cube);
         }
         
         function removeBlock(x, y, z) {
             const key = `${x},${y},${z}`;
             if (world[key]) {
-                scene.remove(world[key].mesh);
                 delete world[key];
+                
+                const chunkX = Math.floor(x / CHUNK_SIZE);
+                const chunkZ = Math.floor(z / CHUNK_SIZE);
+                const chunkKey = `${chunkX},${chunkZ}`;
+                
+                if (loadedChunks[chunkKey]) {
+                    scene.remove(loadedChunks[chunkKey]);
+                    delete loadedChunks[chunkKey];
+                    loadChunk(chunkX, chunkZ);
+                }
+                
                 saveWorld();
             }
         }
