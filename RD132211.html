@@ -132,6 +132,7 @@
         const WORLD_HEIGHT = 8;
         const BLOCK_SIZE = 1;
         const MAX_BUILD_DISTANCE = 5;
+        const MAX_BUILD_HEIGHT = 91;
         
         let scene, camera, renderer, controls;
         let world = new Uint8Array(WORLD_WIDTH * WORLD_DEPTH * WORLD_HEIGHT);
@@ -437,14 +438,16 @@
                     blockPos.x = Math.floor(blockPos.x);
                     blockPos.y = Math.floor(blockPos.y);
                     blockPos.z = Math.floor(blockPos.z);
-                    removeBlock(blockPos.x, blockPos.y, blockPos.z);
+                    if (blockPos.y <= MAX_BUILD_HEIGHT) {
+                        removeBlock(blockPos.x, blockPos.y, blockPos.z);
+                    }
                 } else if (event.button === 2) {
                     blockPos.add(intersect.face.normal.multiplyScalar(0.5));
                     blockPos.x = Math.floor(blockPos.x);
                     blockPos.y = Math.floor(blockPos.y);
                     blockPos.z = Math.floor(blockPos.z);
                     
-                    if (Math.abs(blockPos.x) > WORLD_WIDTH/2 || Math.abs(blockPos.z) > WORLD_DEPTH/2 || blockPos.y >= WORLD_HEIGHT-5 || blockPos.y < -5) {
+                    if (Math.abs(blockPos.x) > WORLD_WIDTH/2 || Math.abs(blockPos.z) > WORLD_DEPTH/2 || blockPos.y > MAX_BUILD_HEIGHT || blockPos.y < -5) {
                         return;
                     }
                     
