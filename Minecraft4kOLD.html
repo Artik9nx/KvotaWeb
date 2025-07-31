@@ -10,13 +10,15 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background: #000;
+            background: #000 url('Res/BackGroung.png') repeat;
             overflow: hidden;
         }
         #gameContainer {
             width: 854px;
             height: 480px;
             position: relative;
+            background: rgba(0, 0, 0, 0.7); /* Полупрозрачный фон для лучшей видимости игры */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
         }
         canvas {
             display: block;
