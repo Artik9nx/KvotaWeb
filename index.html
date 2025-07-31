@@ -51,7 +51,7 @@
         select {
             width: 100%;
             height: 28px;
-            font-size: 12px; /* Уменьшенный размер шрифта */
+            font-size: 12px;
             background-color: #ffc000;
             border: none;
             color: #000;
@@ -135,6 +135,13 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-screen.active {
+            display: flex;
+            opacity: 1;
         }
 
         .loading-text {
@@ -199,7 +206,10 @@
             if (selectedVersion) {
                 const loadingScreen = document.getElementById('loadingScreen');
                 const loadingBar = document.getElementById('loadingBar');
-                loadingScreen.style.display = 'flex';
+                
+                // Показываем экран загрузки с анимацией
+                loadingScreen.classList.add('active');
+                loadingBar.style.width = '0%';
                 
                 let progress = 0;
                 const interval = setInterval(() => {
@@ -208,6 +218,8 @@
                     
                     if (progress >= 100) {
                         clearInterval(interval);
+                        // Плавно скрываем экран загрузки перед переходом
+                        loadingScreen.classList.remove('active');
                         setTimeout(() => {
                             window.location.href = selectedVersion;
                         }, 300);
@@ -219,6 +231,9 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Убедимся, что экран загрузки скрыт при загрузке страницы
+            document.getElementById('loadingScreen').style.display = 'none';
+            
             document.getElementById('versionSelect').addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     launchVersion();
