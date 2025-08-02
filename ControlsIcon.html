@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ControlIcon</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .left-panel, .right-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+        
+        .center-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 2;
+        }
+        
+        .control-button {
+            width: 80px;
+            height: 80px;
+            margin: 10px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        .control-button:active {
+            transform: scale(0.95);
+        }
+        
+        .left {
+            background-image: url('res/left.png');
+        }
+        
+        .right {
+            background-image: url('res/right.png');
+        }
+        
+        .up {
+            background-image: url('res/up.png');
+        }
+        
+        .down {
+            background-image: url('res/down.png');
+        }
+        
+        .jump {
+            background-image: url('res/jump.png');
+            width: 100px;
+            height: 100px;
+        }
+        
+        .break {
+            background-image: url('res/breakblock.png');
+            width: 100px;
+            height: 100px;
+        }
+        
+        .place {
+            background-image: url('res/placeblock.png');
+            width: 100px;
+            height: 100px;
+        }
+        
+        .d-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 5px;
+        }
+        
+        .d-pad .control-button {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        .d-pad .left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        
+        .d-pad .right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        
+        .d-pad .down {
+            grid-column: 2;
+            grid-row: 3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <div class="control-button break"></div>
+        </div>
+        
+        <div class="center-panel">
+            <div class="d-pad">
+                <div class="control-button up"></div>
+                <div class="control-button left"></div>
+                <div class="control-button right"></div>
+                <div class="control-button down"></div>
+            </div>
+            <div class="control-button jump"></div>
+        </div>
+        
+        <div class="right-panel">
+            <div class="control-button place"></div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('.control-button');
+            
+            buttons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const className = this.className.split(' ')[1];
+                    console.log('Нажата кнопка:', className);
+                });
+            });
+            
+            document.addEventListener('keydown', function(e) {
+                let key = '';
+                switch(e.key) {
+                    case 'ArrowLeft': key = 'left'; break;
+                    case 'ArrowRight': key = 'right'; break;
+                    case 'ArrowUp': key = 'up'; break;
+                    case 'ArrowDown': key = 'down'; break;
+                    case ' ': key = 'jump'; break;
+                    case 'b': key = 'break'; break;
+                    case 'p': key = 'place'; break;
+                }
+                
+                if (key) {
+                    console.log('Нажата клавиша:', key);
+                    const button = document.querySelector(`.${key}`);
+                    if (button) {
+                        button.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            button.style.transform = '';
+                        }, 100);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
