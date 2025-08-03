@@ -443,7 +443,7 @@
         function initPreview() {
             previewScene = new THREE.Scene();
             previewCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
-            previewCamera.position.set(1.8, 1.2, 1.8);
+            previewCamera.position.set(2, 1.5, 2);
             previewCamera.lookAt(0, 0, 0);
             previewRenderer = new THREE.WebGLRenderer({ antialias: true });
             previewRenderer.setSize(64, 64);
@@ -463,6 +463,8 @@
             document.getElementById('gameContainer').appendChild(previewRenderer.domElement);
             const geo = new THREE.BoxGeometry(1, 1, 1);
             previewCube = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: stoneTexture }));
+            previewCube.rotation.x = 30 * Math.PI / 180;
+            previewCube.rotation.y = 40 * Math.PI / 180;
             previewScene.add(previewCube);
             previewScene.background = new THREE.Color(0x000000, 0);
             animatePreview();
@@ -477,8 +479,6 @@
             previewCube.material = new THREE.MeshStandardMaterial({ map: mat });
         }
         function animatePreview() {
-            previewCube.rotation.y += 0.02;
-            previewCube.rotation.x += 0.01;
             previewRenderer.render(previewScene, previewCamera);
             requestAnimationFrame(animatePreview);
         }
