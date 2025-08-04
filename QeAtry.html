@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Куб с текстурой и белым фоном</title>
+  <title>Куб с текстурой</title>
   <style>
     body { margin: 0; background: white; }
     canvas { display: block; }
@@ -21,7 +21,7 @@
     document.body.appendChild(renderer.domElement);
 
     const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load('res/Stone.png');
+    const texture = textureLoader.load('Res/stone.jpg');
 
     const size = 30;
     const geometry = new THREE.BoxGeometry(size, size, size);
