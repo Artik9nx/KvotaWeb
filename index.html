@@ -19,20 +19,20 @@
         body {
             margin: 0;
             padding: 0;
-            height: 100vh;
+            min-height: 100vh;
             background-image: url('Res/BackGround.png');
             background-size: 128px 128px;
             background-repeat: repeat;
-            display: flex;
-            flex-direction: column;
             color: white;
-            overflow: hidden;
             position: relative;
+            overflow-x: hidden;
         }
         .logo {
-            margin: 20px 0 0 10px;
-            max-width: 60%;
-            align-self: flex-start;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 300px;
+            max-height: 100px;
             cursor: pointer;
         }
         .menu-container {
@@ -166,41 +166,59 @@
             max-width: 150px;
         }
         @media (max-width: 768px) {
-            .menu-container {
-                position: static;
-                width: 80%;
-                margin: 20px auto;
-                transform: none;
-            }
-            .screenshot {
-                display: none;
-            }
+            /* Сохраняем те же позиции, но увеличиваем размеры для мобильных */
             .logo {
-                max-width: 80%;
-                margin: 20px auto 0;
+                max-width: 200px;
+                top: 15px;
+                left: 15px;
+            }
+            .menu-container {
+                left: 15px;
+                width: 180px;
+            }
+            select, button {
+                height: 36px;
+                font-size: 14px;
             }
             .version-info {
-                position: static;
-                text-align: center;
-                margin: 10px 0;
+                top: 15px;
+                right: 15px;
+                font-size: 16px;
+            }
+            .screenshot {
+                right: 15px;
+                max-width: 45%;
+                max-height: 45%;
             }
             .social-links {
-                position: static;
-                justify-content: center;
-                margin: 20px 0;
+                bottom: 15px;
+                left: 15px;
+                font-size: 18px;
             }
             .discord-promo {
-                position: static;
-                margin: 20px;
-                align-items: center;
+                left: 15px;
+                top: calc(50% + 220px);
+            }
+            .discord-icon {
+                width: 36px;
+                height: 36px;
             }
             .discord-text {
-                text-align: center;
+                font-size: 14px;
+                max-width: 180px;
             }
-            body {
-                overflow-y: auto;
-                padding: 20px;
-                align-items: center;
+        }
+        @media (max-width: 480px) {
+            /* Дополнительные корректировки для очень маленьких экранов */
+            .logo {
+                max-width: 150px;
+            }
+            .menu-container {
+                width: 160px;
+            }
+            .screenshot {
+                max-width: 40%;
+                max-height: 40%;
             }
         }
     </style>
