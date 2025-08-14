@@ -88,18 +88,20 @@
 
     <input type="text" id="nick" placeholder="Nickname" maxlength="30">
     <textarea id="question" placeholder="Your question..."></textarea>
-    <button onclick="submitQuestion()">Send</button>
+    <button onclick="queueQuestion()">Send</button>
 
     <div id="questionsList" style="margin-top: 30px;"></div>
 
     <script>
+        let pendingQuestions = [];
+
         function loadQuestions() {
             fetch('Ask.json')
                 .then(r => r.json().catch(() => []))
                 .then(questions => {
                     const container = document.getElementById('questionsList');
                     container.innerHTML = '';
-                    if (!questions || !questions.length) {
+                    if (!questions.length) {
                         container.textContent = 'No questions yet.';
                         return;
                     }
@@ -116,40 +118,48 @@
                 });
         }
 
-        function submitQuestion() {
+        function queueQuestion() {
             const nick = document.getElementById('nick').value.trim();
             const text = document.getElementById('question').value.trim();
-            if (!nick) return alert("Enter a nickname!");
-            if (!text) return alert("Enter a question!");
+            if (!nick) return alert('Enter nickname!');
+            if (!text) return alert('Enter question!');
 
             const time = new Date().toLocaleString('en-US');
-            const newQuestion = { nick, text, time };
+            pendingQuestions.push({ nick, text, time });
+
+            document.getElementById('nick').value = '';
+            document.getElementById('question').value = '';
+            saveQueuedQuestions();
+        }
+
+        function saveQueuedQuestions() {
+            if (pendingQuestions.length === 0) return;
 
             fetch('Ask.json')
                 .then(r => r.json().catch(() => []))
                 .then(questions => {
-                    questions.push(newQuestion);
+                    questions = [...questions, ...pendingQuestions];
+                    pendingQuestions = [];
                     return fetch('save_questions.php', {
                         method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(questions)
                     });
                 })
-                .then(() => {
-                    document.getElementById('nick').value = '';
-                    document.getElementById('question').value = '';
-                    loadQuestions();
-                })
-                .catch(() => alert("Failed to send question."));
+                .then(loadQuestions)
+                .catch(console.error);
         }
 
         function escapeHtml(unsafe) {
             return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "<")
-                .replace(/>/g, ">")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '<')
+                .replace(/>/g, '>')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
+
+        setInterval(saveQueuedQuestions, 30000);
 
         loadQuestions();
     </script>
