@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ</title>
+    <style>
+        @font-face {
+            font-family: 'Minecraft';
+            src: url('Fonts/Minecraft.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        * {
+            font-family: 'Minecraft', sans-serif !important;
+            font-weight: bold;
+            margin: 0;
+            padding: 0;
+            color: white;
+            background: none;
+            border: none;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        body {
+            margin: 20px;
+            background-image: url('Res/BackGround.png');
+            background-size: 128px 128px;
+            min-height: 100vh;
+            overflow: auto;
+        }
+        a {
+            color: #ffc000;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            margin: 40px 0 20px;
+            font-size: 24px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-family: 'Minecraft', sans-serif;
+            font-weight: bold;
+            color: white;
+            background-color: transparent;
+        }
+        button {
+            padding: 10px;
+            cursor: pointer;
+            font-family: 'Minecraft', sans-serif;
+            font-weight: bold;
+            background-color: transparent;
+            color: #ffc000;
+        }
+        button:hover {
+            color: #ffd700;
+        }
+        .question {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .nick {
+            font-weight: bold;
+            color: #ffc000;
+        }
+        .time {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+        .text {
+            margin: 5px 0;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html">← Back</a>
+    <h1>FAQ</h1>
+
+    <input type="text" id="nick" placeholder="Nickname" maxlength="30">
+    <textarea id="question" placeholder="Your question..."></textarea>
+    <button onclick="submitQuestion()">Send</button>
+
+    <div id="questionsList" style="margin-top: 30px;"></div>
+
+    <script>
+        function loadQuestions() {
+            fetch('Ask.json')
+                .then(r => r.json().catch(() => []))
+                .then(questions => {
+                    const container = document.getElementById('questionsList');
+                    container.innerHTML = '';
+                    if (!questions || !questions.length) {
+                        container.textContent = 'No questions yet.';
+                        return;
+                    }
+                    questions.slice().reverse().forEach(q => {
+                        const el = document.createElement('div');
+                        el.className = 'question';
+                        el.innerHTML = `
+                            <div class="nick">${escapeHtml(q.nick)}</div>
+                            <div class="text">${escapeHtml(q.text)}</div>
+                            <div class="time">${q.time}</div>
+                        `;
+                        container.appendChild(el);
+                    });
+                });
+        }
+
+        function submitQuestion() {
+            const nick = document.getElementById('nick').value.trim();
+            const text = document.getElementById('question').value.trim();
+            if (!nick) return alert("Enter a nickname!");
+            if (!text) return alert("Enter a question!");
+
+            const time = new Date().toLocaleString('en-US');
+            const newQuestion = { nick, text, time };
+
+            fetch('Ask.json')
+                .then(r => r.json().catch(() => []))
+                .then(questions => {
+                    questions.push(newQuestion);
+                    return fetch('save_questions.php', {
+                        method: 'POST',
+                        body: JSON.stringify(questions)
+                    });
+                })
+                .then(() => {
+                    document.getElementById('nick').value = '';
+                    document.getElementById('question').value = '';
+                    loadQuestions();
+                })
+                .catch(() => alert("Failed to send question."));
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "<")
+                .replace(/>/g, ">")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        loadQuestions();
+    </script>
+</body>
+</html>
