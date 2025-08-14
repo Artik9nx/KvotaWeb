@@ -150,39 +150,20 @@
             top: calc(50% + 200px);
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 8px;
+            align-items: flex-start;
+            gap: 5px;
             cursor: pointer;
-            text-align: center;
-            width: 150px;
+            text-decoration: none;
         }
         .discord-icon {
-            width: 64px;
-            height: 64px;
-            transition: transform 0.2s;
-        }
-        .discord-icon:hover {
-            transform: scale(1.1);
+            width: 32px;
+            height: 32px;
         }
         .discord-text {
             font-size: 12px;
-            color: white;
-            text-align: center;
-        }
-        .join-button {
-            background-color: #5865F2;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            text-align: center;
-            width: auto;
-            transition: background-color 0.2s;
-        }
-        .join-button:hover {
-            background-color: #4752C4;
+            color: #ffc000;
+            text-align: left;
+            max-width: 150px;
         }
         @media (max-width: 768px) {
             .menu-container {
@@ -210,8 +191,11 @@
             }
             .discord-promo {
                 position: static;
-                margin: 30px auto;
-                width: auto;
+                margin: 20px;
+                align-items: center;
+            }
+            .discord-text {
+                text-align: center;
             }
             body {
                 overflow-y: auto;
@@ -242,11 +226,10 @@
         <button onclick="launchVersion()">LAUNCH</button>
     </div>
     
-    <div class="discord-promo" onclick="window.open('https://discord.gg/554PftPFcU', '_blank')">
-        <img src="Res/Icons/Discord.png" alt="Discord" class="discord-icon">
-        <div class="discord-text">Our official group on Discord</div>
-        <button class="join-button">Join The Group</button>
-    </div>
+    <a href="https://discord.gg/554PftPFcU" class="discord-promo" target="_blank">
+        <img src="Res/Icon/Discord.png" alt="Discord" class="discord-icon">
+        <div class="discord-text">Our official group on Discord. Join the group.</div>
+    </a>
     
     <div class="social-links">
         <a href="https://discord.gg/554PftPFcU" class="social-link" target="_blank">Discord</a>
