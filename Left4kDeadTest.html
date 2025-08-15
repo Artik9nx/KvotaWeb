@@ -37,7 +37,6 @@
 <body>
     <canvas id="gameCanvas" width="240" height="240"></canvas>
     <div id="ui"></div>
-
     <script>
         const KEY_CODES = {
             1: 1,
@@ -55,7 +54,6 @@
         const TEXTURE_WIDTH = 240;
         const TEXTURE_HEIGHT = 240;
         const TEXTURE_PIXELS = TEXTURE_WIDTH * TEXTURE_HEIGHT;
-
         let canvas, ctx, imageData, pixels, lightmap, sprites;
         let keys = new Array(32767).fill(false);
         let mouseX = 120, mouseY = 120;
@@ -74,7 +72,6 @@
         let skin = 0;
         let bonusTime = 0;
         let playerDir = 0;
-
         const brightness = new Array(512);
         const offs = 30.0;
         for (let i = 0; i < 512; i++) {
@@ -83,7 +80,6 @@
                 brightness[i] = Math.floor(brightness[i] * i / 4);
             }
         }
-
         function init() {
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
@@ -91,10 +87,8 @@
             pixels = new Uint32Array(imageData.data.buffer);
             lightmap = new Uint8Array(TEXTURE_PIXELS);
             sprites = new Array(165888).fill(0);
-            
             generateSprites();
             startGame();
-            
             window.addEventListener('keydown', (e) => { if (KEY_CODES[e.keyCode]) keys[e.keyCode] = true; });
             window.addEventListener('keyup', (e) => { if (KEY_CODES[e.keyCode]) keys[e.keyCode] = false; });
             canvas.addEventListener('mousedown', (e) => { if (e.button === 0) keys[1] = true; });
@@ -104,11 +98,9 @@
                 mouseX = Math.floor((e.clientX - rect.left) * (TEXTURE_WIDTH / rect.width));
                 mouseY = Math.floor((e.clientY - rect.top) * (TEXTURE_HEIGHT / rect.height));
             });
-            
             let lastTime = performance.now();
             const targetFPS = 30;
             const interval = 1000 / targetFPS;
-
             function gameLoop(currentTime) {
                 const delta = currentTime - lastTime;
                 if (delta >= interval) {
@@ -119,7 +111,6 @@
             }
             requestAnimationFrame(gameLoop);
         }
-
         function generateSprites() {
             let pix = 0;
             for (let s = 0; s < 18; s++) {
@@ -133,7 +124,6 @@
                     bonusTimeColor = (0xFF << 24) | (b << 16) | (g << 8) | r;
                     bonusTimeColor &= 0xFF7F7F7F;
                 }
-
                 for (let xWin = 0; xWin < 4; xWin++) {
                     for (let yWin = 0; yWin < 16; yWin++) {
                         let dir = yWin * PI2 / 16;
@@ -141,13 +131,11 @@
                         if (xWin === 3) dir -= 0.19634954084936207;
                         const cos = Math.cos(dir);
                         const sin = Math.sin(dir);
-
                         for (let damageI = 0; damageI < 12; damageI++) {
                             for (let ammoI = 0; ammoI < 12; ammoI++) {
                                 let xPix = Math.floor(cos * (ammoI - 6) + sin * (damageI - 6) + 6.5);
                                 let yPix = Math.floor(cos * (damageI - 6) - sin * (ammoI - 6) + 6.5);
                                 let color = 0;
-
                                 if (s === 17) {
                                     if (xPix > 3 && xPix < 9 && yPix > 3 && yPix < 9) {
                                         color = (xWin & 1) ? 0xFFFF0000 : 0xFF00FF00;
@@ -173,7 +161,6 @@
                 }
             }
         }
-
         function startGame() {
             gameStarted = false;
             score = 0;
@@ -184,16 +171,13 @@
             skin = 0;
             bonusTime = 0;
         }
-
         function startLevel() {
             level++;
             tick = 0;
             map = new Array(MAP_SIZE * MAP_SIZE).fill(0);
             monsterData = new Array(MONSTER_COUNT * 16).fill(0);
-            
             const seed = 4329 + level;
             let random = mulberry32(seed);
-
             for (let i = 0; i < MAP_SIZE * MAP_SIZE; i++) {
                 const xx = Math.floor(random() * 32) + 112;
                 map[i] = ((Math.floor(xx / 3) & 0xFF) << 16) | ((xx & 0xFF) << 8);
@@ -203,7 +187,6 @@
                     map[i] = 0xFFFEFEFE;
                 }
             }
-
             for (let i = 0; i < 70; i++) {
                 const w = Math.floor(random() * 8) + 2;
                 const h = Math.floor(random() * 8) + 2;
@@ -215,7 +198,6 @@
                 const h_scaled_p5 = h_scaled + 5;
                 xx *= 16;
                 ym *= 16;
-                
                 if (i === 68) {
                     monsterData[0] = xx + Math.floor(w_scaled_p5 / 2);
                     monsterData[1] = ym + Math.floor(h_scaled_p5 / 2);
@@ -228,14 +210,12 @@
                     xWin1 = xx + w_scaled + 5;
                     yWin1 = ym + h_scaled + 5;
                 }
-
                 for (let y = ym; y < ym + h_scaled_p5; y++) {
                     for (let x = xx; x < xx + w_scaled_p5; x++) {
                         let d = x - xx;
                         if (xx + w_scaled_p5 - x - 1 < d) d = xx + w_scaled_p5 - x - 1;
                         if (y - ym < d) d = y - ym;
                         if (ym + h_scaled_p5 - y - 1 < d) d = ym + h_scaled_p5 - y - 1;
-                        
                         map[x + y * MAP_SIZE] = 0xFFD2D2D2;
                         if (d > 4) {
                             let br = Math.floor(random() * 16) + 112;
@@ -249,7 +229,6 @@
                         }
                     }
                 }
-
                 for (let door = 0; door < 2; door++) {
                     let x = Math.floor(random() * (w_scaled_p5 - 24)) + xx + 5;
                     let d = Math.floor(random() * (h_scaled_p5 - 24)) + ym + 5;
@@ -257,7 +236,6 @@
                     let hh = 5;
                     x = Math.floor(x / 16) * 16 + 5;
                     d = Math.floor(d / 16) * 16 + 5;
-                    
                     if (Math.floor(random() * 2) === 0) {
                         x = xx + (w_scaled) * Math.floor(random() * 2);
                         hh = 11;
@@ -265,7 +243,6 @@
                         ww = 11;
                         d = ym + (h_scaled) * Math.floor(random() * 2);
                     }
-                    
                     for (let y_door = d; y_door < d + hh; y_door++) {
                         for (let x_door = x; x_door < x + ww; x_door++) {
                             const c = Math.floor(random() * 32) + 112 - 64;
@@ -277,7 +254,6 @@
                     }
                 }
             }
-
             for (let w = 1; w < MAP_SIZE - 1; w++) {
                 for (let h = 1; h < MAP_SIZE - 1; h++) {
                     let isSurrounded = true;
@@ -294,12 +270,10 @@
                     }
                 }
             }
-            
             for (let m = 1; m < MONSTER_COUNT; m++) {
                 monsterData[m * 16 + 11] = 0;
             }
         }
-
         function run() {
             if (!gameStarted) {
                 if (keys[1] && skin === 0) {
@@ -313,18 +287,14 @@
                 if (rushTime >= 150) {
                     rushTime = -Math.floor(Math.random() * 2000);
                 }
-
                 const xCam = monsterData[0];
                 const yCam = monsterData[1];
-                
                 playerDir = Math.atan2((mouseY - 120), (mouseX - 120));
-                
                 let xa = 0, ya = 0;
                 if (keys[65]) xa--;
                 if (keys[68]) xa++;
                 if (keys[87]) ya--;
                 if (keys[83]) ya++;
-                
                 if (xa !== 0) {
                     const newX = Math.floor(xCam + xa);
                     let canMoveX = true;
@@ -338,7 +308,6 @@
                         monsterData[0] = newX;
                     }
                 }
-                
                 if (ya !== 0) {
                     const newY = Math.floor(yCam + ya);
                     let canMoveY = true;
@@ -352,10 +321,8 @@
                         monsterData[1] = newY;
                     }
                 }
-
                 pixels.fill(0xFF000000);
                 lightmap.fill(0);
-
                 for (let y = 0; y < 240; y++) {
                     for (let x = 0; x < 240; x++) {
                         const mapX = (xCam - 120 + x) & (MAP_SIZE - 1);
@@ -363,7 +330,6 @@
                         pixels[x + y * 240] = map[mapX + mapY * MAP_SIZE];
                     }
                 }
-
                 let closestHitDist = 0;
                 for (let ray = 0; ray < 480; ray++) {
                     let xt = ray % 240 - 120;
@@ -373,12 +339,10 @@
                         xt = yt;
                         yt = temp;
                     }
-                    
                     const dd = Math.atan2(yt, xt) - playerDir;
                     let angleDiff = dd;
                     if (angleDiff < -PI) angleDiff += PI2;
                     if (angleDiff >= PI) angleDiff -= PI2;
-                    
                     let yPos = Math.floor((1.0 - angleDiff * angleDiff) * 255);
                     let dist = 120;
                     if (yPos < 0) {
@@ -388,16 +352,13 @@
                     if (tick < 60) {
                         yPos = Math.floor(yPos * tick / 60);
                     }
-                    
                     const rayAngle = Math.atan2(yt, xt) + playerDir;
                     const cos = Math.cos(rayAngle);
                     const sin = Math.sin(rayAngle);
-                    
                     for (let d = 0; d < 960; d++) {
                         const x = Math.floor(xCam + cos * d);
                         const y = Math.floor(yCam + sin * d);
                         const mapIndex = (x + y * MAP_SIZE) & MAP_MASK;
-                        
                         if (map[mapIndex] === 0xFFFFFFFF) {
                             break;
                         }
@@ -405,42 +366,33 @@
                             break;
                         }
                     }
-                    
                     for (let y = 0; y < dist; y++) {
                         const xd = Math.floor(xt * y / 120 + 120);
                         const yd = Math.floor(yt * y / 120 + 120);
-                        
                         if (xd >= 0 && xd < 240 && yd >= 0 && yd < 240) {
                             const mapX = Math.floor(xd + xCam - 120);
                             const mapY = Math.floor(yd + yCam - 120);
-                            
                             if (map[(mapX + mapY * MAP_SIZE) & MAP_MASK] === 0xFFFFFFFF) {
                                 break;
                             }
-                            
                             const xPlayerDist = Math.floor((xd - 120) * 256 / 120);
                             const yd_val = Math.floor((yd - 120) * 256 / 120);
                             const ddd = Math.floor((xPlayerDist * xPlayerDist + yd_val * yd_val) / 256);
                             let br = Math.floor(brightness[ddd] * yPos / 255);
-                            
                             if (ddd < 16) {
                                 const i = Math.floor(128 * (16 - ddd) / 16);
                                 br = Math.floor(br + i * (255 - br) / 255);
                             }
-                            
                             lightmap[xd + yd * 240] = br;
                         }
                     }
                 }
-
                 const shoot = shootDelay-- < 0 && keys[1];
                 let closestHitMonster = 0;
                 closestHitDist = 960;
-
                 for (let m = 0; m < MONSTER_COUNT; m++) {
                     let xPos = monsterData[m * 16 + 0];
                     let yPos = monsterData[m * 16 + 1];
-
                     if (monsterData[m * 16 + 11] === 0) {
                         if (m > 0) {
                             xPos = (Math.floor(Math.random() * 62) + 1) * 16 + 8;
@@ -465,7 +417,6 @@
                     } else {
                         const xDist = xPos - xCam;
                         const yDist = yPos - yCam;
-                        
                         if (m >= 255) {
                             if (xDist * xDist + yDist * yDist < 64) {
                                 map[xPos + yPos * MAP_SIZE] = monsterData[m * 16 + 15];
@@ -483,7 +434,6 @@
                         } else {
                             const relX = xPos - xCam + 120;
                             const relY = yPos - yCam + 120;
-                            
                             let xd = monsterData[m * 16 + 2];
                             if (m === 0) {
                                 xd = Math.floor(playerDir / PI2 * 16 + 4.5 + 16) & 15;
@@ -496,7 +446,6 @@
                             if (m > 255) {
                                 yd = (1088 + (m & 1) * 16 + (tick & 15)) * 144;
                             }
-
                             let spritePixIndex = yd;
                             for (let y = relY - 6; y < relY + 6; y++) {
                                 for (let x = relX - 6; x < relX + 6; x++) {
@@ -506,7 +455,6 @@
                                     }
                                 }
                             }
-
                             if (monsterData[m * 16 + 10] > 0) {
                                 monsterData[m * 16 + 11] += Math.floor(Math.random() * 3) + 1;
                                 monsterData[m * 16 + 10] = 0;
@@ -545,35 +493,26 @@
                                 const playerDirSin = Math.sin(-playerDir);
                                 const rx = -(playerDirCos * xDist - playerDirSin * yDist);
                                 const ry = playerDirCos * yDist + playerDirSin * xDist;
-                                
                                 if (rx > -6.0 && rx < 6.0 && ry > -6.0 && ry < 6.0) {
                                     damage++;
                                     skin += 20;
                                 }
-                                
                                 if (rx > -32.0 && rx < 220.0 && ry > -32.0 && ry < 32.0 && Math.floor(Math.random() * 10) === 0) {
                                     monsterData[m * 16 + 9]++;
                                 }
-                                
                                 if (rx > 0.0 && rx < closestHitDist && ry > -8.0 && ry < 8.0) {
                                     closestHitDist = Math.floor(rx);
                                     closestHitMonster = m;
                                 }
-
                                 let moved = false;
                                 if (monsterData[m * 16 + 9] < 8) continue;
-
                                 if (monsterData[m * 16 + 8] !== 12) {
                                     const xPlayerDist = xCam - xPos;
                                     const yPlayerDist = yCam - yPos;
                                     monsterData[m * 16 + 8] = Math.floor(Math.random() * 25);
-                                    
                                     let xa_monster = 0, ya_monster = 0;
-                                    
-                                    // Логика следования за игроком (как в оригинале)
                                     const xxd = Math.sqrt(xPlayerDist * xPlayerDist);
                                     const yyd = Math.sqrt(yPlayerDist * yPlayerDist);
-                                    
                                     if (Math.random() < yyd / xxd) {
                                         if (yPlayerDist < 0) ya_monster--;
                                         if (yPlayerDist > 0) ya_monster++;
@@ -582,10 +521,8 @@
                                         if (xPlayerDist < 0) xa_monster--;
                                         if (xPlayerDist > 0) xa_monster++;
                                     }
-                                    
                                     if (xa_monster !== 0 || ya_monster !== 0) {
                                         map[xPos + yPos * MAP_SIZE] = monsterData[m * 16 + 15];
-                                        
                                         let canMove = true;
                                         outer_move: for (let xx_test = xPos + xa_monster - 3; xx_test <= xPos + xa_monster + 3; xx_test++) {
                                             for (let yy_test = yPos + ya_monster - 3; yy_test <= yPos + ya_monster + 3; yy_test++) {
@@ -597,7 +534,6 @@
                                                 }
                                             }
                                         }
-                                        
                                         if (canMove) {
                                             moved = true;
                                             monsterData[m * 16 + 0] += xa_monster;
@@ -607,10 +543,8 @@
                                         }
                                     }
                                 }
-                                
                                 if (moved) {
                                     monsterData[m * 16 + 3]++;
-                                    // Обновляем направление спрайта зомби в сторону игрока
                                     const dir = Math.atan2(yCam - monsterData[m * 16 + 1], xCam - monsterData[m * 16 + 0]);
                                     monsterData[m * 16 + 2] = Math.floor(dir / PI2 * 16 + 4.5 + 16) & 15;
                                 }
@@ -618,7 +552,6 @@
                         }
                     }
                 }
-
                 if (shoot) {
                     if (ammo >= 220) {
                         shootDelay = 2;
@@ -631,14 +564,12 @@
                         monsterData[closestHitMonster * 16 + 10] = 1;
                         monsterData[closestHitMonster * 16 + 9] = 127;
                     }
-                    
                     let m_light = 0;
                     for (let dist = closestHitDist; dist >= 0; dist--) {
                         const x = Math.floor(xCam + Math.cos(playerDir) * dist);
                         const y = Math.floor(yCam + Math.sin(playerDir) * dist);
                         const screenX = Math.floor((x - xCam + 120));
                         const screenY = Math.floor((y - yCam + 120));
-                        
                         if (screenX > 0 && screenY > 0 && screenX < TEXTURE_WIDTH && screenY < TEXTURE_HEIGHT) {
                             if (Math.floor(Math.random() * 20) === 0 || dist === closestHitDist) {
                                 pixels[screenX + screenY * TEXTURE_WIDTH] = 0xFFFFFFFF;
@@ -649,12 +580,10 @@
                         }
                         m_light = Math.floor(m_light * 20 / 21);
                     }
-                    
                     if (closestHitDist < 120) {
                         const impactDist = closestHitDist - 3;
                         const xPos = Math.floor(xCam + Math.cos(playerDir) * impactDist);
                         const yPos = Math.floor(yCam + Math.sin(playerDir) * impactDist);
-                        
                         for (let x = -12; x <= 12; x++) {
                             for (let y = -12; y <= 12; y++) {
                                 const xd = xPos + x;
@@ -666,13 +595,11 @@
                                 }
                             }
                         }
-                        
                         for (let x = 0; x < 10; x++) {
                             const pow = (Math.floor(Math.random() * 100) * Math.floor(Math.random() * 100)) * 8.0 / 10000.0;
                             const dir = (Math.floor(Math.random() * 100) - Math.floor(Math.random() * 100)) / 100.0;
                             const xPlayerDist = Math.floor(xPos - Math.cos(playerDir + dir) * pow) + Math.floor(Math.random() * 4) - Math.floor(Math.random() * 4);
                             const yPlayerDist = Math.floor(yPos - Math.sin(playerDir + dir) * pow) + Math.floor(Math.random() * 4) - Math.floor(Math.random() * 4);
-                            
                             if (xPlayerDist >= 0 && yPlayerDist >= 0 && xPlayerDist < TEXTURE_WIDTH && yPlayerDist < TEXTURE_HEIGHT) {
                                 if (closestHitMonster > 0) {
                                     pixels[xPlayerDist + yPlayerDist * TEXTURE_WIDTH] = 0xFFFF0000;
@@ -683,47 +610,37 @@
                         }
                     }
                 }
-
                 if (damage >= 220) {
                     keys[1] = false;
                     skin = 255;
                     gameStarted = false;
                 }
-
                 if (keys[82] && ammo > 20 && clips < 220) {
                     shootDelay = 30;
                     ammo = 20;
                     clips += 10;
                 }
-
                 if (xCam > xWin0 && xCam < xWin1 && yCam > yWin0 && yCam < yWin1) {
                     startLevel();
                 }
             }
-
             bonusTime = Math.floor(bonusTime * 8 / 9);
             skin = Math.floor(skin / 2);
-            
             for (let y = 0; y < TEXTURE_HEIGHT; y++) {
                 for (let x = 0; x < TEXTURE_WIDTH; x++) {
                     let noise = Math.floor(Math.random() * 16) * Math.floor(Math.random() * 16) / 16;
                     if (!gameStarted) {
                         noise *= 4;
                     }
-                    
                     const c = pixels[x + y * TEXTURE_WIDTH];
                     const l = lightmap[x + y * TEXTURE_WIDTH];
-                    
                     let r = ((c >> 16) & 0xFF) * l / 255 + noise;
                     let g = ((c >> 8) & 0xFF) * l / 255 + noise;
                     let b = (c & 0xFF) * l / 255 + noise;
-                    
                     r = r * (255 - skin) / 255 + skin;
                     g = g * (255 - bonusTime) / 255 + bonusTime;
-                    
                     pixels[x + y * TEXTURE_WIDTH] = (0xFF << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
                 }
-                
                 if (y % 2 === 0 && y >= damage && y < 220) {
                     for (let x = 232; x < 238; x++) {
                         pixels[y * TEXTURE_WIDTH + x] = 0xFF000080;
@@ -738,12 +655,9 @@
                     pixels[y * TEXTURE_WIDTH + 221] = 0xFF00FFFF;
                 }
             }
-
             ctx.putImageData(imageData, 0, 0);
-            
             const ui = document.getElementById('ui');
             ui.innerHTML = '';
-            
             if (!gameStarted) {
                 ctx.fillStyle = 'white';
                 ctx.font = '16px monospace';
@@ -759,16 +673,14 @@
                 ctx.fillText('Score: ' + score, 4, 232);
             }
         }
-
         function mulberry32(a) {
             return function() {
                 a |= 0; a = a + 0x6D2B79F5 | 0;
                 var t = Math.imul(a ^ a >>> 15, 1 | a);
-                t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+                t = t + Math.mul(t ^ t >>> 7, 61 | t) ^ t;
                 return ((t ^ t >>> 14) >>> 0) / 4294967296;
             }
         }
-
         window.onload = init;
     </script>
 </body>
