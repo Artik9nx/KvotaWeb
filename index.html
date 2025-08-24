@@ -101,13 +101,17 @@
         .version-info span {
             color: #0000FF;
         }
-        .screenshot {
+        .video-container {
             position: absolute;
             top: 50%;
             right: 20px;
             transform: translateY(-50%);
             max-width: 50%;
             max-height: 50%;
+        }
+        .gameplay-video {
+            width: 100%;
+            height: auto;
         }
         .social-links {
             position: absolute;
@@ -120,7 +124,6 @@
         .social-link {
             color: #ffc000;
             text-decoration: none;
-            transition: color 0.2s;
         }
         .social-link:hover {
             color: #ffd700;
@@ -185,7 +188,7 @@
                 right: 15px;
                 font-size: 16px;
             }
-            .screenshot {
+            .video-container {
                 right: 15px;
                 max-width: 45%;
                 max-height: 45%;
@@ -215,7 +218,7 @@
             .menu-container {
                 width: 160px;
             }
-            .screenshot {
+            .video-container {
                 max-width: 40%;
                 max-height: 40%;
             }
@@ -228,7 +231,13 @@
         <button onclick="document.getElementById('errorScreen').style.display = 'none'" style="margin-top: 20px;">Close</button>
     </div>
     <img src="Res/logo.png" alt="Logo" class="logo" id="logo">
-    <img src="Res/Screenshot.png" alt="Screenshot" class="screenshot">
+    
+    <div class="video-container">
+        <video class="gameplay-video" autoplay muted loop>
+            <source src="Video/Gameplay.mp4" type="video/mp4">
+        </video>
+    </div>
+    
     <div class="version-info">Version: <span id="versionText">0.5.3</span></div>
     <div class="menu-container">
         <select id="versionSelect">
